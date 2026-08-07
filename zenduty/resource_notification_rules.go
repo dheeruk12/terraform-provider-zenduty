@@ -24,6 +24,7 @@ func resourceNotificationRules() *schema.Resource {
 			"username": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"contact": {
 				Type:             schema.TypeString,

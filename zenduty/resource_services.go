@@ -36,6 +36,7 @@ func resourceServices() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"description": {
@@ -47,13 +48,15 @@ func resourceServices() *schema.Resource {
 				Optional: true,
 			},
 			"collation": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				ValidateFunc: validation.IntBetween(0, 1),
-			},
-			"collation_time": {
 				Type:     schema.TypeInt,
 				Optional: true,
+				// backend SERVICE_COLLATION_TYPES: 0 off, 1 time-based, 3 content-based (2 is unused)
+				ValidateFunc: validation.IntInSlice([]int{0, 1, 3}),
+			},
+			"collation_time": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				ValidateFunc: validation.IntBetween(0, 1440),
 			},
 			"sla": {
 				Type:             schema.TypeString,
@@ -106,9 +109,11 @@ func CreateServices(Ctx context.Context, d *schema.ResourceData, m interface{}) 
 	if v, ok := d.GetOk("team_priority"); ok {
 		newService.TeamPriority = v.(string)
 	}
-	if newService.Collation == 1 && newService.CollationTime == 0 {
+	if newService.Collation != 0 && newService.CollationTime == 0 {
 		return nil, fmt.Errorf("collation_time is required when collation is enabled")
-
+	}
+	if newService.Collation == 0 && newService.CollationTime != 0 {
+		return nil, fmt.Errorf("collation_time cannot be set without enabling collation")
 	}
 	return newService, nil
 }

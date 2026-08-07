@@ -23,6 +23,7 @@ func resourceUser() *schema.Resource {
 			"team": {
 				Type:             schema.TypeString,
 				Optional:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"first_name": {
@@ -61,8 +62,9 @@ func resourceCreateUser(ctx context.Context, d *schema.ResourceData, m interface
 		return diag.FromErr(errors.New("last_name is required"))
 	}
 	email := d.Get("email").(string)
+	role := d.Get("role").(int)
 	apiclient, _ := m.(*Config).Client()
-	newUser := &client.UserObj{FirstName: firstName, LastName: lastName, Email: email, Role: 3}
+	newUser := &client.UserObj{FirstName: firstName, LastName: lastName, Email: email, Role: role}
 	newUserobj := &client.CreateUser{Team: team, User: *newUser}
 
 	user, err := apiclient.Users.CreateUser(newUserobj)
@@ -70,7 +72,7 @@ func resourceCreateUser(ctx context.Context, d *schema.ResourceData, m interface
 		return diag.FromErr(err)
 	}
 	d.SetId(user.User.Username)
-	d.Set("role", 3)
+	d.Set("role", user.Role)
 	return nil
 }
 

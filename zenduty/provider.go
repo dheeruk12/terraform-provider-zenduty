@@ -14,6 +14,7 @@ func Provider() *schema.Provider {
 				Type:        schema.TypeString,
 				Description: "Your Zenduty API key",
 				Required:    true,
+				Sensitive:   true,
 				DefaultFunc: schema.EnvDefaultFunc("ZENDUTY_API_KEY", nil),
 			},
 			"base_url": &schema.Schema{

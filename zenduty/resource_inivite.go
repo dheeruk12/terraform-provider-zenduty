@@ -13,14 +13,16 @@ import (
 
 func resourceInvite() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: resourceInviteCreate,
-		UpdateContext: resourceInviteUpdate,
-		DeleteContext: resourceInviteDelete,
-		ReadContext:   wrapReadWith404(resourceInviteRead),
+		DeprecationMessage: "zenduty_invite is deprecated and will be removed in a future release: it only fires invitations on create and tracks no server state. Use the zenduty_user resource instead.",
+		CreateContext:      resourceInviteCreate,
+		UpdateContext:      resourceInviteUpdate,
+		DeleteContext:      resourceInviteDelete,
+		ReadContext:        wrapReadWith404(resourceInviteRead),
 		Schema: map[string]*schema.Schema{
 			"team": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"email_accounts": {
 				Type:     schema.TypeList,

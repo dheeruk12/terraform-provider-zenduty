@@ -36,6 +36,7 @@ func resourceSLA() *schema.Resource {
 			"team_id": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"escalations": &schema.Schema{
 				Type:     schema.TypeList,
@@ -108,9 +109,7 @@ func CreateSLA(Ctx context.Context, d *schema.ResourceData, m interface{}) (*cli
 	if v, ok := d.GetOk("resolve_time"); ok {
 		newSLA.ResolveTime = v.(int)
 	}
-	if v, ok := d.GetOk("is_active"); ok {
-		newSLA.IsActive = v.(bool)
-	}
+	newSLA.IsActive = d.Get("is_active").(bool)
 
 	newSLA.Escalations = make([]client.SLAEscalations, len(escalations))
 

@@ -27,8 +27,9 @@ func resourceGlobalRouter() *schema.Resource {
 				Required: true,
 			},
 			"integration_key": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"is_enabled": {
 				Type:     schema.TypeBool,
@@ -51,9 +52,7 @@ func resourceGlobalRouterCreate(ctx context.Context, d *schema.ResourceData, m i
 	if v, ok := d.GetOk("description"); ok {
 		newGlobalRouter.Description = v.(string)
 	}
-	if v, ok := d.GetOk("is_enabled"); ok {
-		newGlobalRouter.IsEnabled = v.(bool)
-	}
+	newGlobalRouter.IsEnabled = d.Get("is_enabled").(bool)
 
 	router, err := apiclient.GlobalRouter.CreateGlobalRouter(newGlobalRouter)
 	if err != nil {
@@ -80,9 +79,7 @@ func resourceGlobalRouterUpdate(Ctx context.Context, d *schema.ResourceData, m i
 	if v, ok := d.GetOk("description"); ok {
 		newGlobalRouter.Description = v.(string)
 	}
-	if v, ok := d.GetOk("is_enabled"); ok {
-		newGlobalRouter.IsEnabled = v.(bool)
-	}
+	newGlobalRouter.IsEnabled = d.Get("is_enabled").(bool)
 
 	router, err := apiclient.GlobalRouter.UpdateGlobalRouter(d.Id(), newGlobalRouter)
 	if err != nil {

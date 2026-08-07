@@ -58,12 +58,14 @@ func dataSourceIntegrations() *schema.Resource {
 							Computed: true,
 						},
 						"integration_key": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Type:      schema.TypeString,
+							Computed:  true,
+							Sensitive: true,
 						},
 						"webhook_url": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Type:      schema.TypeString,
+							Computed:  true,
+							Sensitive: true,
 						},
 						"created_by": {
 							Type:     schema.TypeString,

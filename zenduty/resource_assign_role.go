@@ -2,15 +2,12 @@ package zenduty
 
 import (
 	"context"
-	"errors"
-	"regexp"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func resourceAssignAccountRole() *schema.Resource {
@@ -26,9 +23,10 @@ func resourceAssignAccountRole() *schema.Resource {
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"username": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validation.StringMatch(regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{1}$`), "must be a valid username"),
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: ValidateUserName(),
 			},
 		},
 	}
@@ -65,9 +63,6 @@ func resourceUpdateAssignRole(Ctx context.Context, d *schema.ResourceData, m int
 		role.AccountRole = &AccountRole
 	}
 	username := d.Get("username").(string)
-	if username != d.Id() {
-		return diag.FromErr(errors.New("cannot update username"))
-	}
 
 	_, err := apiclient.AccountRole.AssignRoleToUser(username, role)
 	if err != nil {

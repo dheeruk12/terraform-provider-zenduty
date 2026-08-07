@@ -59,6 +59,11 @@ provider "zenduty" {
 
 You can provide your credentials via the `ZENDUTY_API_KEY` environment variables.
 
+## Argument Reference
+
+* `token` (Required) - Your Zenduty API key. Can also be provided via the `ZENDUTY_API_KEY` environment variable.
+* `base_url` (Optional) - The base URL of the Zenduty API. Defaults to `https://www.zenduty.com`. Only needs to be set when targeting a non-standard Zenduty deployment.
+
 Usage:
 
 ```sh

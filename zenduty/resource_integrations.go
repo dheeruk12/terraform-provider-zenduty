@@ -27,16 +27,19 @@ func resourceIntegrations() *schema.Resource {
 			"application": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"service_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"name": {
@@ -48,12 +51,14 @@ func resourceIntegrations() *schema.Resource {
 				Required: true,
 			},
 			"integration_key": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"webhook_url": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"is_enabled": {
 				Type:     schema.TypeBool,
@@ -94,15 +99,9 @@ func resourceIntegrationCreate(ctx context.Context, d *schema.ResourceData, m in
 	if v, ok := d.GetOk("application"); ok {
 		newIntegration.Application = v.(string)
 	}
-	if v, ok := d.GetOk("is_enabled"); ok {
-		newIntegration.IsEnabled = v.(bool)
-	}
-	if v, ok := d.GetOk("create_incident_for"); ok {
-		newIntegration.CreateIncidentFor = v.(int)
-	}
-	if v, ok := d.GetOk("default_urgency"); ok {
-		newIntegration.DefaultUrgency = v.(int)
-	}
+	newIntegration.IsEnabled = d.Get("is_enabled").(bool)
+	newIntegration.CreateIncidentFor = d.Get("create_incident_for").(int)
+	newIntegration.DefaultUrgency = d.Get("default_urgency").(int)
 
 	integration, err := apiclient.Integrations.CreateIntegration(teamID, serviceID, newIntegration)
 	if err != nil {
@@ -136,15 +135,9 @@ func resourceIntegrationUpdate(Ctx context.Context, d *schema.ResourceData, m in
 	if v, ok := d.GetOk("application"); ok {
 		newIntegration.Application = v.(string)
 	}
-	if v, ok := d.GetOk("is_enabled"); ok {
-		newIntegration.IsEnabled = v.(bool)
-	}
-	if v, ok := d.GetOk("create_incident_for"); ok {
-		newIntegration.CreateIncidentFor = v.(int)
-	}
-	if v, ok := d.GetOk("default_urgency"); ok {
-		newIntegration.DefaultUrgency = v.(int)
-	}
+	newIntegration.IsEnabled = d.Get("is_enabled").(bool)
+	newIntegration.CreateIncidentFor = d.Get("create_incident_for").(int)
+	newIntegration.DefaultUrgency = d.Get("default_urgency").(int)
 
 	integration, err := apiclient.Integrations.UpdateIntegration(teamID, serviceID, id, newIntegration)
 	if err != nil {

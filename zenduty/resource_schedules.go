@@ -45,6 +45,7 @@ func resourceSchedules() *schema.Resource {
 			"team_id": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"layers": &schema.Schema{
 				Type:     schema.TypeList,
@@ -126,9 +127,9 @@ func resourceSchedules() *schema.Resource {
 							Required: true,
 						},
 						"user": {
-							Type:         schema.TypeString,
-							Required:     true,
-							ValidateFunc: validation.StringMatch(regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{1}$`), "must be a valid user id"),
+							Type:             schema.TypeString,
+							Required:         true,
+							ValidateDiagFunc: ValidateUserName(),
 						},
 					},
 				},

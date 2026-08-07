@@ -25,6 +25,7 @@ func resourceMembers() *schema.Resource {
 			"team": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"user": {

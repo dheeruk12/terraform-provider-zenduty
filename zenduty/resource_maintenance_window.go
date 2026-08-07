@@ -30,6 +30,7 @@ func resourceMaintenanceWindow() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"start_time": {
@@ -82,10 +83,6 @@ func ValidateMaintenanceWindow(Ctx context.Context, d *schema.ResourceData, m in
 	}
 
 	if v, ok := d.GetOk("start_time"); ok {
-		if !validateDate(v.(string)) {
-			return nil, diag.FromErr(errors.New("start_time is invalid"))
-		}
-
 		newManintence.StartTime = v.(string)
 
 		loc, zoneErr := time.LoadLocation(newManintence.TimeZone)
@@ -100,9 +97,6 @@ func ValidateMaintenanceWindow(Ctx context.Context, d *schema.ResourceData, m in
 
 	}
 	if v, ok := d.GetOk("end_time"); ok {
-		if !validateDate(v.(string)) {
-			return nil, diag.FromErr(errors.New("end_time is invalid"))
-		}
 		newManintence.EndTime = v.(string)
 
 		loc, zoneErr := time.LoadLocation(newManintence.TimeZone)
@@ -126,9 +120,6 @@ func ValidateMaintenanceWindow(Ctx context.Context, d *schema.ResourceData, m in
 	if v, ok := d.GetOk("repeat_until"); ok {
 		if v.(string) == "" {
 			return nil, diag.FromErr(errors.New("repeat_until must not be empty"))
-		}
-		if !validateDate(v.(string)) {
-			return nil, diag.FromErr(errors.New("repeat_until is invalid"))
 		}
 
 		loc, zoneErr := time.LoadLocation(newManintence.TimeZone)

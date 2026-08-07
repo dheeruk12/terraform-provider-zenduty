@@ -14,7 +14,7 @@ import (
 )
 
 func isJSONString(s string) bool {
-	var js map[string]interface{}
+	var js interface{}
 	return json.Unmarshal([]byte(s), &js) == nil
 }
 
@@ -27,17 +27,60 @@ func checkList(a string, list []string) bool {
 	return false
 }
 
-func validateDate(date string) bool {
-
-	return true
-}
 func IsValidUUID(uuid string) bool {
-	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
+	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
 	return r.MatchString(uuid)
+}
+
+// IsValidUsername matches Zenduty usernames, which are the first 25 characters
+// of a UUID (8-4-4-4-1) — not a full UUID.
+func IsValidUsername(username string) bool {
+	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]$")
+	return r.MatchString(username)
+}
+
+func ValidateUserName() schema.SchemaValidateDiagFunc {
+	return func(v interface{}, path cty.Path) diag.Diagnostics {
+		var diags diag.Diagnostics
+		id, ok := v.(string)
+		if !ok {
+			diags = append(diags, diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  "Invalid",
+				Detail:   "expected type of string",
+			})
+		}
+		if !IsValidUsername(id) {
+			diags = append(diags, diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  "Invalid username",
+				Detail:   fmt.Sprintf("expected %s to be a valid Zenduty username (the 25-character prefix of a UUID)", path),
+			})
+		}
+
+		return diags
+	}
 }
 
 func emptyString(s string) bool {
 	return len(strings.TrimSpace(s)) == 0
+}
+
+// isRetryableError reports whether an SDK error is worth retrying: 5xx, 429,
+// or transport-level failures (timeouts, connection resets). The SDK returns
+// untyped errors with the HTTP status embedded in the message; an error
+// without a status marker never reached the API and is safe to retry.
+var httpStatusRe = regexp.MustCompile(`failed: (\d{3}) `)
+
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	m := httpStatusRe.FindStringSubmatch(err.Error())
+	if m == nil {
+		return true
+	}
+	return m[1] == "429" || m[1][0] == '5'
 }
 
 func ValidateUUID() schema.SchemaValidateDiagFunc {

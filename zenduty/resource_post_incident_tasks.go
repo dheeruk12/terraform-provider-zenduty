@@ -28,6 +28,7 @@ func resourcePostIncidentTasks() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"unique_id": {
@@ -88,9 +89,6 @@ func CreatePostIncidentTask(Ctx context.Context, d *schema.ResourceData, m inter
 	}
 	if v, ok := d.GetOk("title"); ok {
 		newpostincidenttask.Title = v.(string)
-	}
-	if v, ok := d.GetOk("rank"); ok {
-		newpostincidenttask.Status = v.(int)
 	}
 	if v, ok := d.GetOk("assigned_to"); ok {
 		newpostincidenttask.AssignedTo = v.(string)

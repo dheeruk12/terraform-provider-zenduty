@@ -25,6 +25,7 @@ func resourceGlobalRoutingRules() *schema.Resource {
 			"router_id": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"name": {
 				Type:     schema.TypeString,

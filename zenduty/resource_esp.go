@@ -40,6 +40,7 @@ func resourceEsp() *schema.Resource {
 			"team_id": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"rules": &schema.Schema{
 				Type:     schema.TypeList,

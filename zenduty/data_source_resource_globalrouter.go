@@ -42,6 +42,7 @@ func dataSourceGlobalRouter() *schema.Resource {
 							Type:        schema.TypeString,
 							Description: "The integration key of the global router",
 							Computed:    true,
+							Sensitive:   true,
 						},
 						"is_enabled": {
 							Type:        schema.TypeBool,

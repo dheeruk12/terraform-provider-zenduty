@@ -27,11 +27,13 @@ func resourceTaskTemplateTaskTasks() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"task_template_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"unique_id": {
@@ -194,10 +196,11 @@ func resourceTaskTemplateTaskTasksImporter(d *schema.ResourceData, m interface{}
 		return nil, fmt.Errorf("invalid team_id (%q)", parts[0])
 	} else if !IsValidUUID(parts[1]) {
 		return nil, fmt.Errorf("invalid task_template_id (%q)", parts[1])
-	} else if !IsValidUUID(parts[1]) {
+	} else if !IsValidUUID(parts[2]) {
 		return nil, fmt.Errorf("invalid task_id (%q)", parts[2])
 	}
 	d.Set("team_id", parts[0])
-	d.SetId(parts[1])
+	d.Set("task_template_id", parts[1])
+	d.SetId(parts[2])
 	return []*schema.ResourceData{d}, nil
 }

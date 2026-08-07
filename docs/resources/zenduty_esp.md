@@ -50,7 +50,7 @@ resource "zenduty_esp" "example_esp" {
 
 
 ```
-* `delay` (Required) (Number) - The delay of the rule in minutes.
+* `delay` (Optional) (Number) - The delay of the rule in minutes.
 * `targets` (see [below for nested schema](#nestedblock--rules--targets))
 
 <a id="nestedblock--rules--targets"></a>
@@ -63,8 +63,8 @@ resource "zenduty_esp" "example_esp" {
 
 
 ```
-* `target_type` (Required) (Number) -  values are `1` for schedule `2` for user
-* `target_id` (Required) (String) -  username of the user to assign. or unique_id of schedule 
+* `target_type` (Optional) (Number) -  values are `1` for schedule `2` for user
+* `target_id` (Optional) (String) -  username of the user to assign. or unique_id of schedule 
 
 ## Escalation Policy Example
 ```hcl
@@ -110,15 +110,15 @@ resource "zenduty_esp" "esp1" {
 
 * `team_id` (Required) - The unique_id of the team to create the escalation policy in.
 * `name` (Required) - The name of the escalation policy.
-* `description` (Required) - The description of the escalation policy
+* `description` (Optional) - The description of the escalation policy
 * `summary` (Optional) - The summary of the escalation policy.
 * `rules` (Optional) - The rules of the escalation policy. (see [above for nested schema](#nestedblock--rules))
 * `move_to_next` (Optional) - The move_to_next of the escalation policy.
-* `repeat_policy` (Optional) - The repeat_policy of the escalation policy.
-* `delay` (Required) (Number) - The delay of the rule in minutes.
+* `repeat_policy` (Optional) (Number) - The number of times to repeat the escalation policy, ranging from `0` to `10`.
+* `delay` (Optional) (Number) - The delay of the rule in minutes.
 * `targets` (see [above for nested schema](#nestedblock--rules--targets))
-* `target_type` (Required) (Number) -  values are `1` for schedule `2` for user
-* `target_id` (Required) (String) -  username of the user to assign. or unique_id of schedule 
+* `target_type` (Optional) (Number) -  values are `1` for schedule `2` for user
+* `target_id` (Optional) (String) -  username of the user to assign. or unique_id of schedule 
 
 
 ## Attributes Reference
@@ -159,7 +159,7 @@ resource "zenduty_esp" "esp1" {
 
 - **description** (String)
 - **move_to_next** (Boolean)
-- **repeat_policy** (Number) -> range from `1` to `10`
+- **repeat_policy** (Number) -> range from `0` to `10`
 - **rules** (Block List) (see [above rules schema](#nestedblock--rules))
 - **summary** (String)
 

@@ -26,6 +26,7 @@ func resourceRoles() *schema.Resource {
 			"team": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"unique_id": {
