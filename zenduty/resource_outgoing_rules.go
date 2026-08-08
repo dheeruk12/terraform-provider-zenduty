@@ -130,7 +130,13 @@ func resourceReadOutgoingRules(Ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 	d.SetId(rule.UniqueID)
-	d.Set("rule_json", rule.RuleJSON)
+	// normalize like alertrules/routing rules so formatting differences in
+	// the stored JSON never show up as diffs
+	if normalizedJSON, normErr := normalizeJSON(rule.RuleJSON); normErr == nil {
+		d.Set("rule_json", normalizedJSON)
+	} else {
+		d.Set("rule_json", rule.RuleJSON)
+	}
 	d.Set("enabled", rule.Enabled)
 
 	return diags

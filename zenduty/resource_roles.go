@@ -31,7 +31,7 @@ func resourceRoles() *schema.Resource {
 			},
 			"unique_id": {
 				Type:     schema.TypeString,
-				Optional: true,
+				Computed: true,
 			},
 			"title": {
 				Type:     schema.TypeString,
@@ -39,7 +39,7 @@ func resourceRoles() *schema.Resource {
 			},
 			"creation_date": {
 				Type:     schema.TypeString,
-				Optional: true,
+				Computed: true,
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -72,15 +72,7 @@ func resourceRoleCreate(ctx context.Context, d *schema.ResourceData, m interface
 	if v, ok := d.GetOk("title"); ok {
 		newrole.Title = v.(string)
 	}
-	if v, ok := d.GetOk("rank"); ok {
-		newrole.Rank = v.(int)
-		if newrole.Rank == 0 {
-			newrole.Rank = 1
-		}
-		if newrole.Rank <= 0 || newrole.Rank > 10 {
-			return diag.Errorf("Rank should be between 1 and 10")
-		}
-	}
+	newrole.Rank = d.Get("rank").(int)
 
 	role, err := apiclient.Roles.CreateRole(newrole.Team, newrole)
 	if err != nil {
@@ -108,15 +100,7 @@ func resourceRoleUpdate(Ctx context.Context, d *schema.ResourceData, m interface
 	if v, ok := d.GetOk("team"); ok {
 		teamID = v.(string)
 	}
-	if v, ok := d.GetOk("rank"); ok {
-		newrole.Rank = v.(int)
-		if newrole.Rank == 0 {
-			newrole.Rank = 1
-		}
-		if newrole.Rank <= 0 || newrole.Rank > 10 {
-			return diag.Errorf("Rank should be between 1 and 10")
-		}
-	}
+	newrole.Rank = d.Get("rank").(int)
 	_, err := apiclient.Roles.UpdateRoles(teamID, newrole)
 	if err != nil {
 		return diag.FromErr(err)
@@ -150,6 +134,8 @@ func resourceRoleRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	d.Set("title", role.Title)
 	d.Set("description", role.Description)
 	d.Set("rank", role.Rank)
+	d.Set("unique_id", role.UniqueID)
+	d.Set("creation_date", role.CreationDate)
 	return diags
 
 }

@@ -3,7 +3,6 @@ package zenduty
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
 
@@ -41,39 +40,15 @@ func resourceTeamLevelPermissions() *schema.Resource {
 }
 
 func validateTeamLeveLPermissionss(Ctx context.Context, d *schema.ResourceData, m interface{}) (*client.TeamLevelPermissions, diag.Diagnostics) {
-	permissionsList := []string{
-		"analytics_read",
-		"escalation_policy_attach",
-		"escalation_policy_read",
-		"incident_read",
-		"incident_role_read",
-		"incident_write",
-		"integration_read",
-		"maintenance_read",
-		"member_read",
-		"post_incident_task_read",
-		"postmortem_read",
-		"priority_read",
-		"schedule_attach",
-		"schedule_read",
-		"service_read",
-		"sla_read",
-		"stakeholder_template_read",
-		"tag_read",
-		"task_template_read",
-		"team_read",
-	}
-
 	permissions := d.Get("permissions").([]interface{})
 	newPermission := &client.TeamLevelPermissions{}
 	team_id := d.Get("team_id").(string)
 	newPermission.UniqueID = team_id
+	// The permission catalogue grows server-side and there is no endpoint to
+	// fetch it, so unknown values are left to the API to reject.
 	for _, permission := range permissions {
 		if permission.(string) == "" {
 			return nil, diag.FromErr(errors.New("permission must not be empty"))
-		}
-		if !checkList(permission.(string), permissionsList) {
-			return nil, diag.FromErr(fmt.Errorf("invalid permission received %s", permission.(string)))
 		}
 		newPermission.Permissions = append(newPermission.Permissions, permission.(string))
 	}

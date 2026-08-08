@@ -33,7 +33,11 @@ resource "zenduty_account_role" "sre" {
 
 ### Permissions
 
-Please refer to the following link for detailed documentation https://docs.zenduty.com/rbac
+Permissions are validated by the API rather than the provider, so roles can use
+permissions added to Zenduty after this provider release. Please refer to the
+following link for detailed documentation https://docs.zenduty.com/rbac
+
+The permissions available at the time of writing are:
 
 - "analytics_read",
 - "escalation_policy_read",
@@ -48,10 +52,15 @@ Please refer to the following link for detailed documentation https://docs.zendu
 - "maintenance_write",
 - "member_read",
 - "member_write",
+- "post_incident_task_read",
+- "post_incident_task_write",
 - "postmortem_read",
 - "postmortem_write",
 - "priority_read",
 - "priority_write",
+- "read_statuspages",
+- "edit_statuspages",
+- "regenerate_integration_key",
 - "schedule_read",
 - "schedule_write",
 - "service_read",
@@ -65,6 +74,8 @@ Please refer to the following link for detailed documentation https://docs.zendu
 - "task_template_read",
 - "task_template_write",
 - "team_read",
+- "workflow_read",
+- "workflow_write",
 
 
 ## Attributes Reference

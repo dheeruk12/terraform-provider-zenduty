@@ -148,6 +148,7 @@ func resourceReadTaskTemplates(Ctx context.Context, d *schema.ResourceData, m in
 	d.Set("summary", postincidenttask.Summary)
 	d.Set("creation_date", postincidenttask.CreationDate)
 	d.Set("team_id", teamID)
+	d.Set("unique_id", postincidenttask.UniqueID)
 
 	return diags
 }

@@ -59,6 +59,13 @@ func resourceIncidents() *schema.Resource {
 				Computed:     true,
 				ValidateFunc: validation.IntBetween(1, 3),
 			},
+			"urgency": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				Computed:     true,
+				ValidateFunc: validation.IntBetween(0, 1),
+				Description:  "Urgency of the incident: 0 (low) or 1 (high).",
+			},
 		},
 	}
 }
@@ -84,6 +91,12 @@ func resourceIncidentsCreate(ctx context.Context, d *schema.ResourceData, m inte
 	if v, ok := d.GetOk("service"); ok {
 		newIncident.Service = v.(string)
 	}
+	// raw-config check because 0 (low) is a meaningful urgency, unlike the
+	// zero value of most attributes; unset keeps the service default.
+	if !d.GetRawConfig().GetAttr("urgency").IsNull() {
+		urgency := d.Get("urgency").(int)
+		newIncident.Urgency = &urgency
+	}
 
 	incident, err := apiclient.Incidents.CreateIncident(newIncident)
 	if err != nil {
@@ -102,11 +115,18 @@ func resourceIncidentsCreate(ctx context.Context, d *schema.ResourceData, m inte
 
 func resourceIncidentUpdate(Ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	if d.HasChange("status") {
+	if d.HasChange("status") || d.HasChange("urgency") {
 		apiclient, _ := m.(*Config).Client()
 
-		newStatus := &client.IncidentStatus{Status: d.Get("status").(int)}
-		_, err := apiclient.Incidents.UpdateIncident(d.Id(), newStatus)
+		patch := &client.IncidentStatus{}
+		if d.HasChange("status") {
+			patch.Status = d.Get("status").(int)
+		}
+		if d.HasChange("urgency") {
+			urgency := d.Get("urgency").(int)
+			patch.Urgency = &urgency
+		}
+		_, err := apiclient.Incidents.UpdateIncident(d.Id(), patch)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -134,6 +154,7 @@ func resourceIncidentRead(ctx context.Context, d *schema.ResourceData, m interfa
 	d.Set("title", incident.Title)
 	d.Set("summary", incident.Summary)
 	d.Set("status", incident.Status)
+	d.Set("urgency", incident.Urgency)
 	d.Set("service", incident.Service)
 	d.Set("escalation_policy", incident.EscalationPolicy)
 

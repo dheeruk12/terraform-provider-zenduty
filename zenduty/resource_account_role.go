@@ -3,7 +3,6 @@ package zenduty
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
 
@@ -43,39 +42,6 @@ func resourceAccountRole() *schema.Resource {
 }
 
 func validateAccountRoles(Ctx context.Context, d *schema.ResourceData, m interface{}) (*client.AccountRole, diag.Diagnostics) {
-	permissionsList := []string{
-		"analytics_read",
-		"escalation_policy_read",
-		"escalation_policy_write",
-		"incident_read",
-		"incident_write",
-		"incident_role_read",
-		"incident_role_write",
-		"integration_read",
-		"integration_write",
-		"maintenance_read",
-		"maintenance_write",
-		"member_read",
-		"member_write",
-		"postmortem_read",
-		"postmortem_write",
-		"priority_read",
-		"priority_write",
-		"schedule_read",
-		"schedule_write",
-		"service_read",
-		"service_write",
-		"sla_read",
-		"sla_write",
-		"stakeholder_template_read",
-		"stakeholder_template_write",
-		"tag_read",
-		"tag_write",
-		"task_template_read",
-		"task_template_write",
-		"team_read",
-	}
-
 	name := d.Get("name").(string)
 	description := d.Get("description").(string)
 	permissions := d.Get("permissions").([]interface{})
@@ -83,12 +49,11 @@ func validateAccountRoles(Ctx context.Context, d *schema.ResourceData, m interfa
 
 	newRole.Name = name
 	newRole.Description = description
+	// The permission catalogue grows server-side and there is no endpoint to
+	// fetch it, so unknown values are left to the API to reject.
 	for _, permission := range permissions {
 		if permission.(string) == "" {
 			return nil, diag.FromErr(errors.New("permission must not be empty"))
-		}
-		if !checkList(permission.(string), permissionsList) {
-			return nil, diag.FromErr(fmt.Errorf("invalid permission received %s", permission.(string)))
 		}
 		newRole.Permissions = append(newRole.Permissions, permission.(string))
 	}

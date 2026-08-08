@@ -31,9 +31,9 @@ resource "zenduty_tags" "example_tag" {
 
 ## Argument Reference
 
-* `team` - (Required) The unique_id of team to create the tag in.
+* `team_id` - (Required, Forces new resource) The unique_id of team to create the tag in.
 * `name` - (Required) The name of the tag.
-* `color` - (Required) The color of the tag values are one  of the following magenta, red, volcano, orange, gold, lime, green, cyan, blue, geekblue, purple
+* `color` - (Optional) The color of the tag. Validated by the API; the values used by the Zenduty UI are magenta, red, volcano, orange, gold, lime, green, cyan, blue, geekblue and purple.
 
 
 ## Attributes Reference

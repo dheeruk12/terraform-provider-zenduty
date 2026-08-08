@@ -2,7 +2,7 @@ package zenduty
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -22,7 +22,7 @@ func resourceUser() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"team": {
 				Type:             schema.TypeString,
-				Optional:         true,
+				Required:         true,
 				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
@@ -32,8 +32,9 @@ func resourceUser() *schema.Resource {
 				ValidateDiagFunc: ValidateRequired(),
 			},
 			"last_name": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:             schema.TypeString,
+				Required:         true,
+				ValidateDiagFunc: ValidateRequired(),
 			},
 			"email": {
 				Type:             schema.TypeString,
@@ -55,12 +56,6 @@ func resourceCreateUser(ctx context.Context, d *schema.ResourceData, m interface
 	team := d.Get("team").(string)
 	firstName := d.Get("first_name").(string)
 	lastName := d.Get("last_name").(string)
-	if emptyString(team) {
-		return diag.FromErr(errors.New("team is required"))
-	}
-	if emptyString(lastName) {
-		return diag.FromErr(errors.New("last_name is required"))
-	}
 	email := d.Get("email").(string)
 	role := d.Get("role").(int)
 	apiclient, _ := m.(*Config).Client()
@@ -72,7 +67,9 @@ func resourceCreateUser(ctx context.Context, d *schema.ResourceData, m interface
 		return diag.FromErr(err)
 	}
 	d.SetId(user.User.Username)
-	d.Set("role", user.Role)
+	// The create response is a team-member object whose role is the TEAM role
+	// enum (1 manager, 2 user), not the account role — keep the planned value;
+	// Read reports the account role from the account-member endpoint.
 	return nil
 }
 
@@ -113,6 +110,12 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	return nil
 }
 
+// The Zenduty API has no endpoint to delete or deactivate an account member,
+// so destroy can only forget the user from state.
 func resourceDeleteUser(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	return nil
+	return diag.Diagnostics{{
+		Severity: diag.Warning,
+		Summary:  "zenduty_user cannot be deleted via the API",
+		Detail:   fmt.Sprintf("User %s was removed from Terraform state, but the account member still exists in Zenduty and must be removed from the web console.", d.Id()),
+	}}
 }

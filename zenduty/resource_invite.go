@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func resourceInvite() *schema.Resource {
@@ -44,6 +45,9 @@ func resourceInvite() *schema.Resource {
 						"role": {
 							Type:     schema.TypeInt,
 							Required: true,
+							// account roles: 2 admin, 3 user (1 owner is not assignable)
+							ValidateFunc: validation.IntBetween(2, 3),
+							Description:  "Account role of the invited user: 2 (admin) or 3 (user).",
 						},
 					},
 				},

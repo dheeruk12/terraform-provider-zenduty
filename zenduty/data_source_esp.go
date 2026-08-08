@@ -2,7 +2,7 @@ package zenduty
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -40,7 +40,7 @@ func dataSourceEsp() *schema.Resource {
 						},
 						"team": {
 							Type:     schema.TypeString,
-							Required: true,
+							Computed: true,
 						},
 						"unique_id": {
 							Type:     schema.TypeString,
@@ -151,7 +151,7 @@ func dataSourceEspsRead(ctx context.Context, d *schema.ResourceData, m interface
 		if err := d.Set("escalation_policies", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s", teamID, espID))
 
 		return diags
 	} else {
@@ -194,7 +194,7 @@ func dataSourceEspsRead(ctx context.Context, d *schema.ResourceData, m interface
 		if err := d.Set("escalation_policies", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s", teamID, espID))
 
 		return diags
 	}

@@ -159,7 +159,7 @@ func ValidateRequired() schema.SchemaValidateDiagFunc {
 
 }
 
-func genrateUUID() string {
+func generateUUID() string {
 	id := uuid.New()
 	uuidString := id.String()
 	return uuidString
@@ -177,4 +177,22 @@ func normalizeJSON(jsonString string) (string, error) {
 	}
 
 	return string(normalizedBytes), nil
+}
+
+// suppressEquivalentJSONDiffs suppresses diffs between JSON strings that
+// decode to the same value, and treats an unset value as equivalent to the
+// backend's empty-object default.
+func suppressEquivalentJSONDiffs(k, old, new string, d *schema.ResourceData) bool {
+	if old == "" {
+		old = "{}"
+	}
+	if new == "" {
+		new = "{}"
+	}
+	normalizedOld, errOld := normalizeJSON(old)
+	normalizedNew, errNew := normalizeJSON(new)
+	if errOld != nil || errNew != nil {
+		return old == new
+	}
+	return normalizedOld == normalizedNew
 }

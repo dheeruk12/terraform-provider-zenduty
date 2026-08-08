@@ -2,7 +2,6 @@ package zenduty
 
 import (
 	"context"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -115,7 +114,7 @@ func dataSourceManintenanceRead(ctx context.Context, d *schema.ResourceData, m i
 	if err := d.Set("maintenance_windows", items); err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(time.Now().String())
+	d.SetId(teamID)
 
 	return diags
 

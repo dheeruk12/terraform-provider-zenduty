@@ -49,12 +49,14 @@ resource "zenduty_sla" "example_sla" {
 
 ## Argument Reference
 
-* `team_id` - (Required) The unique_id of team to create the sla in.
+* `team_id` - (Required, Forces new resource) The unique_id of team to create the sla in.
 * `name` - (Required) The name of the sla.
-* `description`  - (Required) The description of the sla
+* `description`  - (Optional) The description of the sla
+* `conditions` - (Optional) SLA conditions as a JSON object string. Formatting-only differences are ignored.
 * `acknowledge_time` - (Required) time in seconds to trigger SLA if not acknowledged.
 * `resolve_time` - (Required) Time in seconds to trigger SLA if not resolved.
-* `escalations` - (Required) Reminders when an SLA is breached or about to breach.  (see [below for nested schema](#nestedblock--escalation))
+* `is_active` - (Optional) Whether the SLA is active. Defaults to `true`.
+* `escalations` - (Required) Reminders when an SLA is breached or about to breach. At least one is required.  (see [below for nested schema](#nestedblock--escalation))
 
 ```hcl
 
@@ -72,7 +74,7 @@ escalations {
 
 * `type`: It is an integer field that determines the type of notification behavior. `1` signifies that notifications are sent when the SLA breach is acknowledged, while `2` indicates notifications for resolution SLA breaches.
 * `time`: This field specifies the time duration in seconds when notifications should be sent. If time is positive, it means notifications will be sent x seconds after the SLA breach, and if it's negative, notifications will be sent x seconds before the breach.
-* `responders` - users who need to be paged when an SLA is breached. (see [below for nested schema](#nestedblock--responders))
+* `responders` - users or schedules who need to be paged when an SLA is breached. (see [below for nested schema](#nestedblock--responders))
 
 
 <a id="nestedblock--responders"></a>
@@ -81,8 +83,15 @@ escalations {
 responders {
     user = data.zenduty_user.user1.users[0].username
 }
+
+responders {
+    schedule = zenduty_schedules.example_schedule.id
+}
 ```
-* `user` - Username of the user who will be notified if sla is breached 
+Each responder must set exactly one of:
+
+* `user` - (Optional) Username of the user who will be notified if the SLA is breached.
+* `schedule` - (Optional) `unique_id` of a schedule whose on-call users will be notified if the SLA is breached.
 
 
 

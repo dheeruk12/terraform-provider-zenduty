@@ -7,25 +7,21 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func dataSourceTags() *schema.Resource {
+func dataSourceTaskTemplates() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceTagsRead,
+		ReadContext: dataSourceTaskTemplatesRead,
 
 		Schema: map[string]*schema.Schema{
 			"team_id": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:             schema.TypeString,
+				Required:         true,
+				ValidateDiagFunc: ValidateUUID(),
 			},
-
-			"tags": &schema.Schema{
+			"task_templates": &schema.Schema{
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"team": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
 						"unique_id": {
 							Type:     schema.TypeString,
 							Computed: true,
@@ -34,11 +30,11 @@ func dataSourceTags() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"creation_date": {
+						"summary": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"color": {
+						"creation_date": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -49,34 +45,32 @@ func dataSourceTags() *schema.Resource {
 	}
 }
 
-func dataSourceTagsRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func dataSourceTaskTemplatesRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	apiclient, _ := m.(*Config).Client()
 
 	var diags diag.Diagnostics
 
 	teamID := d.Get("team_id").(string)
 
-	tags, err := apiclient.Tags.GetTags(teamID)
+	templates, err := apiclient.TaskTemplate.GetTaskTemplates(teamID)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	items := make([]map[string]interface{}, len(tags))
-	for i, tag := range tags {
-		item := make(map[string]interface{})
-		item["team"] = tag.Team
-		item["unique_id"] = tag.UniqueID
-		item["name"] = tag.Name
-		item["color"] = tag.Color
-		item["creation_date"] = tag.CreationDate
-		items[i] = item
+	items := make([]map[string]interface{}, len(templates))
+	for i, template := range templates {
+		items[i] = map[string]interface{}{
+			"unique_id":     template.UniqueID,
+			"name":          template.Name,
+			"summary":       template.Summary,
+			"creation_date": template.CreationDate,
+		}
 	}
 
-	if err := d.Set("tags", items); err != nil {
+	if err := d.Set("task_templates", items); err != nil {
 		return diag.FromErr(err)
 	}
 	d.SetId(teamID)
 
 	return diags
-
 }

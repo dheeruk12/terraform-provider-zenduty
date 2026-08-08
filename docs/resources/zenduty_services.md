@@ -40,15 +40,17 @@ resource "zenduty_services" "exampleservice" {
 ## Argument Reference
 
 * `name` (Required) - Name of the service (unique) 
-* `team_id` (Required) - Unique id of the team where the service will be created
+* `team_id` (Required, Forces new resource) - Unique id of the team where the service will be created
 * `escalation_policy` (Required) - Unique id of the escalation policy to be used by the service
 * `description` (Optional) - Description of the service 
 * `summary` (Optional) - Summary of the service
-*  `collation` (Optional)  - The collation value for the service. Defaults to 1.
-* `collation_time` (Optional) - The collation time for the service. Defaults to 1 minute.
+*  `collation` (Optional)  - Alert collation mode: `0` (off), `1` (time-based) or `3` (content-based). Content-based collation is configured with an alert grouping policy.
+* `collation_time` (Optional) - The collation window in minutes, `1` to `1440`. Required when `collation` is not `0`, and must be `0` when collation is off.
 * `sla` (Optional) - The SLA value for the service.
 * `task_template` (Optional) - The task template value for the service.
 * `team_priority` (Optional) - The team priority value for the service.
+* `auto_resolve_timeout` (Optional) - Seconds after which open incidents auto-resolve. `0` disables auto-resolution.
+* `acknowledgement_timeout` (Optional) - Seconds after which unacknowledged incidents re-trigger. `0` disables the timeout; the backend requires at least 600 seconds when enabled.
 
 
 ## Attributes Reference
@@ -56,6 +58,9 @@ resource "zenduty_services" "exampleservice" {
 The following attributes are exported:
 
 * `id` - The ID of the Zenduty Service.
+* `status` - Current status of the service.
+* `under_maintenance` - Whether the service is currently under a maintenance window.
+* `creation_date` - When the service was created.
 
 ## Import
 
@@ -88,6 +93,8 @@ Required fields:
 
  Optional fields:
 
+- **acknowledgement_timeout** (Number)
+- **auto_resolve_timeout** (Number)
 - **collation** (Number)
 - **collation_time** (Number)
 - **description** (String)
@@ -95,5 +102,11 @@ Required fields:
 - **summary** (String)
 - **task_template** (String)
 - **team_priority** (String)
+
+ Read-only fields:
+
+- **creation_date** (String)
+- **status** (Number)
+- **under_maintenance** (Boolean)
 
 

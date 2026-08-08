@@ -2,7 +2,7 @@ package zenduty
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -156,7 +156,7 @@ func dataSourceAlertRulesRead(ctx context.Context, d *schema.ResourceData, m int
 		if err := d.Set("alertrules", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s/%s/%s", teamID, serviceID, integrationID, alertRuleID))
 
 		return diags
 	} else {
@@ -196,7 +196,7 @@ func dataSourceAlertRulesRead(ctx context.Context, d *schema.ResourceData, m int
 		if err := d.Set("alertrules", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s/%s/%s", teamID, serviceID, integrationID, alertRuleID))
 
 		return diags
 	}

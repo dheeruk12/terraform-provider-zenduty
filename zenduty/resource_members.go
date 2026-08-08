@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func resourceMembers() *schema.Resource {
@@ -36,6 +37,9 @@ func resourceMembers() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  2,
+				// team roles, not account roles: 1 manager, 2 user
+				ValidateFunc: validation.IntBetween(1, 2),
+				Description:  "Team role of the member: 1 (manager) or 2 (user).",
 			},
 		},
 	}
@@ -121,7 +125,12 @@ func resourceMemberRead(ctx context.Context, d *schema.ResourceData, m interface
 		return diag.FromErr(err)
 	}
 	d.Set("team", member.Team)
-	d.Set("user", member.User.Username) // Extract username from User object
+	// The API accepts a username, email, or id in "user" but always returns
+	// the username; keep the config's spelling once set so the choice of
+	// identifier never reads back as a diff. Imports still get the username.
+	if prior := d.Get("user").(string); prior == "" {
+		d.Set("user", member.User.Username)
+	}
 	d.Set("role", member.Role)
 
 	return diags

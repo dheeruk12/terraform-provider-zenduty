@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
@@ -38,9 +37,16 @@ func resourceSLA() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"conditions": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Description:      "SLA conditions as a JSON object string.",
+				DiffSuppressFunc: suppressEquivalentJSONDiffs,
+			},
 			"escalations": &schema.Schema{
 				Type:     schema.TypeList,
 				Required: true,
+				MinItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"unique_id": {
@@ -48,9 +54,8 @@ func resourceSLA() *schema.Resource {
 							Computed: true,
 						},
 						"time": {
-							Type:         schema.TypeInt,
-							Required:     true,
-							ValidateFunc: validation.IntBetween(-432000, 432000),
+							Type:     schema.TypeInt,
+							Required: true,
 						},
 						"type": {
 							Type:         schema.TypeInt,
@@ -63,8 +68,16 @@ func resourceSLA() *schema.Resource {
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"user": {
-										Type:     schema.TypeString,
-										Required: true,
+										Type:             schema.TypeString,
+										Optional:         true,
+										ValidateDiagFunc: ValidateUserName(),
+										Description:      "Username of a responder. Exactly one of user or schedule must be set.",
+									},
+									"schedule": {
+										Type:             schema.TypeString,
+										Optional:         true,
+										ValidateDiagFunc: ValidateUUID(),
+										Description:      "Unique id of a schedule responder. Exactly one of user or schedule must be set.",
 									},
 								},
 							},
@@ -75,12 +88,12 @@ func resourceSLA() *schema.Resource {
 			"acknowledge_time": {
 				Type:         schema.TypeInt,
 				Required:     true,
-				ValidateFunc: validation.IntBetween(1, 432000),
+				ValidateFunc: validation.IntAtLeast(1),
 			},
 			"resolve_time": {
 				Type:         schema.TypeInt,
 				Required:     true,
-				ValidateFunc: validation.IntBetween(1, 432000),
+				ValidateFunc: validation.IntAtLeast(1),
 			},
 			"is_active": {
 				Type:     schema.TypeBool,
@@ -97,11 +110,12 @@ func CreateSLA(Ctx context.Context, d *schema.ResourceData, m interface{}) (*cli
 	if v, ok := d.GetOk("name"); ok {
 		newSLA.Name = v.(string)
 	}
-	if v, ok := d.GetOk("description"); ok {
-		newSLA.Description = v.(string)
-		if emptyString(newSLA.Description) {
-			return nil, diag.FromErr(errors.New("description is empty"))
+	newSLA.Description = d.Get("description").(string)
+	if v, ok := d.GetOk("conditions"); ok {
+		if !isJSONString(v.(string)) {
+			return nil, diag.FromErr(errors.New("conditions is not valid JSON"))
 		}
+		newSLA.Conditions = v.(string)
 	}
 	if v, ok := d.GetOk("acknowledge_time"); ok {
 		newSLA.AcknowledgeTime = v.(int)
@@ -127,7 +141,7 @@ func CreateSLA(Ctx context.Context, d *schema.ResourceData, m interface{}) (*cli
 		if v, ok := escalationMap["unique_id"]; ok {
 			newEscalation.UniqueID = v.(string)
 			if emptyString(newEscalation.UniqueID) {
-				newEscalation.UniqueID = genrateUUID()
+				newEscalation.UniqueID = generateUUID()
 			}
 		}
 
@@ -137,9 +151,13 @@ func CreateSLA(Ctx context.Context, d *schema.ResourceData, m interface{}) (*cli
 			for j, responder := range responderusers {
 				resonderMap := responder.(map[string]interface{})
 				responderuser := client.ResponderUser{}
-				if v, ok := resonderMap["user"]; ok {
-					responderuser.User = v.(string)
+				user, _ := resonderMap["user"].(string)
+				schedule, _ := resonderMap["schedule"].(string)
+				if (user == "") == (schedule == "") {
+					return nil, diag.FromErr(fmt.Errorf("escalation %d responder %d: exactly one of user or schedule must be set", i, j))
 				}
+				responderuser.User = user
+				responderuser.Schedule = schedule
 				newEscalation.Responders[j] = responderuser
 			}
 		}
@@ -166,7 +184,8 @@ func flattenResponderUser(responders []client.ResponderUser) []map[string]interf
 	result := make([]map[string]interface{}, len(responders))
 	for i, responder := range responders {
 		result[i] = map[string]interface{}{
-			"user": responder.User,
+			"user":     responder.User,
+			"schedule": responder.Schedule,
 		}
 	}
 	return result
@@ -194,10 +213,6 @@ func resourceCreateSLA(Ctx context.Context, d *schema.ResourceData, m interface{
 		return diag.FromErr(err)
 	}
 
-	for i, escalation := range sla.Escalations {
-		log.Printf("SLAEscalation %d: %v", i, escalation)
-	}
-	log.Printf("%+v\n", sla.Escalations)
 	d.SetId(sla.UniqueID)
 	if err := d.Set("escalations", flattenEscalation(sla.Escalations)); err != nil {
 		return diag.FromErr(err)
@@ -276,6 +291,7 @@ func resourceReadSLA(Ctx context.Context, d *schema.ResourceData, m interface{})
 	}
 	d.Set("name", sla.Name)
 	d.Set("description", sla.Description)
+	d.Set("conditions", sla.Conditions)
 	d.Set("acknowledge_time", sla.AcknowledgeTime)
 	d.Set("resolve_time", sla.ResolveTime)
 	d.Set("is_active", sla.IsActive)

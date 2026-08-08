@@ -10,6 +10,7 @@ import (
 	"github.com/Zenduty/zenduty-go-sdk/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func resourceMaintenanceWindow() *schema.Resource {
@@ -46,8 +47,9 @@ func resourceMaintenanceWindow() *schema.Resource {
 				Required: true,
 			},
 			"repeat_interval": {
-				Type:     schema.TypeInt,
-				Optional: true,
+				Type:         schema.TypeInt,
+				Optional:     true,
+				ValidateFunc: validation.IntAtLeast(1),
 			},
 			"repeat_until": {
 				Type:     schema.TypeString,
@@ -112,9 +114,6 @@ func ValidateMaintenanceWindow(Ctx context.Context, d *schema.ResourceData, m in
 	}
 
 	if v, ok := d.GetOk("repeat_interval"); ok {
-		if v.(int) <= 0 {
-			return nil, diag.FromErr(errors.New("repeat_interval must be greater than 0"))
-		}
 		newManintence.RepeatInterval = v.(int)
 	}
 	if v, ok := d.GetOk("repeat_until"); ok {
@@ -144,19 +143,6 @@ func ValidateMaintenanceWindow(Ctx context.Context, d *schema.ResourceData, m in
 	}
 	return newManintence, nil
 }
-
-// if v, ok := d.GetOk("services"); ok {
-
-// 	for _, service := range v.([]interface{}) {
-// 		if service.(map[string]interface{})["services"] == nil {
-// 			return nil, diag.FromErr(errors.New("services must not be empty"))
-// 		}
-// 		if !IsValidUUID(service.(map[string]interface{})["services"].(string)) {
-// 			return nil, diag.FromErr(errors.New("services must be a valid UUID"))
-// 		}
-
-// 	}
-// }
 
 func resourceCreateManintenances(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var teamID string

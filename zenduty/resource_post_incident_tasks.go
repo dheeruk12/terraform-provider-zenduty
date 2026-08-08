@@ -196,6 +196,7 @@ func resourceReadPostIncidentTasks(Ctx context.Context, d *schema.ResourceData, 
 		d.Set("due_in_time", parseDueInTime(*postincidenttask.DueInTime))
 	}
 	d.Set("creation_date", postincidenttask.CreationDate)
+	d.Set("unique_id", postincidenttask.UniqueID)
 
 	return diags
 }

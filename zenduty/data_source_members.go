@@ -2,7 +2,7 @@ package zenduty
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -40,8 +40,9 @@ func dataSourceMembers() *schema.Resource {
 						},
 						"user": {
 							Type:        schema.TypeMap,
-							Description: "The user details",
+							Description: "The user details: username, first_name, last_name, email",
 							Computed:    true,
+							Elem:        &schema.Schema{Type: schema.TypeString},
 						},
 						"role": {
 							Type:        schema.TypeInt,
@@ -85,7 +86,7 @@ func dataSourceMembersRead(ctx context.Context, d *schema.ResourceData, m interf
 		if err := d.Set("members", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s", teamID, memberID))
 
 		return diags
 	} else {
@@ -113,7 +114,7 @@ func dataSourceMembersRead(ctx context.Context, d *schema.ResourceData, m interf
 			items[i] = item
 		}
 
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s", teamID, memberID))
 
 		if err := d.Set("members", items); err != nil {
 			return diag.FromErr(err)

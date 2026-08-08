@@ -48,9 +48,6 @@ func validateTags(Ctx context.Context, d *schema.ResourceData, m interface{}) (*
 	if !IsValidUUID(team) {
 		return nil, diag.FromErr(errors.New("team_id must be a valid UUID"))
 	}
-	if color != "" && !checkList(color, []string{"magenta", "red", "volcano", "orange", "gold", "lime", "green", "cyan", "blue", "geekblue", "purple"}) {
-		return nil, diag.FromErr(errors.New("color must be one of the following: magenta, red, volcano, orange, gold, lime, green, cyan, blue, geekblue, purple"))
-	}
 
 	newTag.Name = name
 	newTag.Color = color

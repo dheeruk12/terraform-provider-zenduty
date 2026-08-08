@@ -93,7 +93,7 @@ func CreateTaskTemplateTask(Ctx context.Context, d *schema.ResourceData, m inter
 		newTaskTemplateTask.TaskTemplate = v.(string)
 	}
 	position := d.Get("position").(int)
-	newTaskTemplateTask.Positon = position
+	newTaskTemplateTask.Position = position
 
 	return newTaskTemplateTask, nil
 
@@ -177,13 +177,14 @@ func resourceReadTaskTemplateTaskTasks(Ctx context.Context, d *schema.ResourceDa
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	d.Set("unique_id", tasktemplatetask.UniqueID)
 	d.Set("title", tasktemplatetask.Title)
 	d.Set("description", tasktemplatetask.Description)
 	d.Set("creation_date", tasktemplatetask.CreationDate)
 	d.Set("team_id", teamID)
 	d.Set("role", tasktemplatetask.Role)
 	d.Set("task_template_id", tasktemplatetask.TaskTemplate)
-	d.Set("position", tasktemplatetask.Positon)
+	d.Set("position", tasktemplatetask.Position)
 	d.Set("due_in", tasktemplatetask.DueIn)
 	return diags
 }

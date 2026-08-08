@@ -26,6 +26,15 @@ func resourceTeam() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"owner": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Username of the team owner.",
+			},
+			"creation_date": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -113,6 +122,8 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.FromErr(err)
 	}
 	d.Set("name", t.Name)
+	d.Set("owner", t.Owner)
+	d.Set("creation_date", t.CreationDate)
 
 	return diags
 }

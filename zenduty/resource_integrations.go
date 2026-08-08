@@ -48,7 +48,7 @@ func resourceIntegrations() *schema.Resource {
 			},
 			"summary": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"integration_key": {
 				Type:      schema.TypeString,
@@ -66,8 +66,9 @@ func resourceIntegrations() *schema.Resource {
 				Default:  true,
 			},
 			"create_incident_for": {
-				Type:         schema.TypeInt,
-				Optional:     true,
+				Type:     schema.TypeInt,
+				Optional: true,
+				// 0 none, 1 critical, 2 critical+error, 3 critical+error+warning
 				ValidateFunc: validation.IntBetween(0, 3),
 				Default:      1,
 			},

@@ -108,12 +108,13 @@ resource "zenduty_esp" "esp1" {
 
 ## Argument Reference
 
-* `team_id` (Required) - The unique_id of the team to create the escalation policy in.
+* `team_id` (Required, Forces new resource) - The unique_id of the team to create the escalation policy in.
 * `name` (Required) - The name of the escalation policy.
 * `description` (Optional) - The description of the escalation policy
 * `summary` (Optional) - The summary of the escalation policy.
 * `rules` (Optional) - The rules of the escalation policy. (see [above for nested schema](#nestedblock--rules))
 * `move_to_next` (Optional) - The move_to_next of the escalation policy.
+* `global_ep` (Optional, Forces new resource) - Create the policy as a global (account-level) escalation policy instead of a team-level one. Defaults to `false`.
 * `repeat_policy` (Optional) (Number) - The number of times to repeat the escalation policy, ranging from `0` to `10`.
 * `delay` (Optional) (Number) - The delay of the rule in minutes.
 * `targets` (see [above for nested schema](#nestedblock--rules--targets))

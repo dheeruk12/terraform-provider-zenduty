@@ -2,8 +2,10 @@ package zenduty
 
 import (
 	"context"
-	"time"
+	"fmt"
+	"strconv"
 
+	"github.com/Zenduty/zenduty-go-sdk/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -67,10 +69,6 @@ func dataSourceIncidents() *schema.Resource {
 						},
 						"service_object_auto_resolve_timeout": {
 							Type:     schema.TypeInt,
-							Computed: true,
-						},
-						"service_object": {
-							Type:     schema.TypeString,
 							Computed: true,
 						},
 						"service_object_created_by": {
@@ -137,7 +135,7 @@ func dataSourceIncidents() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"esccalation_policy": {
+						"escalation_policy": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -177,10 +175,6 @@ func dataSourceIncidents() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"sla_object": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
 						"team_priority": {
 							Type:     schema.TypeString,
 							Computed: true,
@@ -200,11 +194,39 @@ func dataSourceIncidentRead(ctx context.Context, d *schema.ResourceData, m inter
 	apiclient, _ := m.(*Config).Client()
 
 	var diags diag.Diagnostics
-	incidents, err := apiclient.Incidents.GetIncidents()
-	if err != nil {
-		return diag.FromErr(err)
+
+	number := d.Get("number").(string)
+	statusFilter := d.Get("status").(string)
+
+	var results []client.Incidents
+	if number != "" {
+		incident, err := apiclient.Incidents.GetIncidentByNumber(number)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		results = []client.Incidents{*incident}
+	} else {
+		incidents, err := apiclient.Incidents.GetIncidents()
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		results = incidents.Results
 	}
-	results := incidents.Results
+
+	if statusFilter != "" {
+		status, err := strconv.Atoi(statusFilter)
+		if err != nil {
+			return diag.Errorf("status must be a number, got %q", statusFilter)
+		}
+		filtered := results[:0]
+		for _, result := range results {
+			if result.Status == status {
+				filtered = append(filtered, result)
+			}
+		}
+		results = filtered
+	}
+
 	items := make([]map[string]interface{}, len(results))
 	for i, result := range results {
 
@@ -227,7 +249,6 @@ func dataSourceIncidentRead(ctx context.Context, d *schema.ResourceData, m inter
 		item["service_object_team_priority"] = result.ServiceObject.TeamPriority
 		item["service_object_task_template"] = result.ServiceObject.TaskTemplate
 		item["service_object_escalation_policy"] = result.ServiceObject.EscalationPolicy
-		item["service_object_team"] = result.ServiceObject.Team
 		item["service_object_sla"] = result.ServiceObject.SLA
 		item["service_object_collation_time"] = result.ServiceObject.CollationTime
 		item["service_object_collation"] = result.ServiceObject.Collation
@@ -237,12 +258,23 @@ func dataSourceIncidentRead(ctx context.Context, d *schema.ResourceData, m inter
 		item["incident_key"] = result.IncidentKey
 		item["service"] = result.Service
 		item["urgency"] = result.Urgency
+		item["merged_with"] = result.MergedWith
+		item["assigned_to"] = result.AssignedTo
+		item["escalation_policy"] = result.EscalationPolicy
+		item["escalation_policy_object_unique_id"] = result.EscalationPolicyObject.UniqueID
+		item["escalation_policy_object_name"] = result.EscalationPolicyObject.Name
+		item["assigned_to_name"] = result.AssignedToName
+		item["resolved_date"] = result.ResolvedDate
+		item["acknowledged_date"] = result.AcknowledgedDate
+		item["context_window_start"] = result.ContextWindowStart
+		item["context_window_end"] = result.ContextWindowEnd
+		item["sla"] = result.SLA
 		items[i] = item
 	}
 	if err := d.Set("results", items); err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(time.Now().String())
+	d.SetId(fmt.Sprintf("incidents/%s/%s", number, statusFilter))
 	return diags
 
 }

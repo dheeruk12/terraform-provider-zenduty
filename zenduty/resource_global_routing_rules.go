@@ -23,9 +23,10 @@ func resourceGlobalRoutingRules() *schema.Resource {
 		},
 		Schema: map[string]*schema.Schema{
 			"router_id": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: ValidateUUID(),
 			},
 			"name": {
 				Type:     schema.TypeString,
@@ -34,6 +35,12 @@ func resourceGlobalRoutingRules() *schema.Resource {
 			"rule_json": {
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"position": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Computed:    true,
+				Description: "Evaluation order of the rule within the router. Assigned by the server when omitted.",
 			},
 			"actions": &schema.Schema{
 				Type:     schema.TypeList,
@@ -95,7 +102,7 @@ func ValidateAndCreateRoutingRules(Ctx context.Context, d *schema.ResourceData, 
 
 	}
 	if newAlertRule.Name == "" {
-		return nil, diag.FromErr(errors.New("description is required"))
+		return nil, diag.FromErr(errors.New("name is required"))
 	}
 	if newAlertRule.RuleJSON == "" {
 		return nil, diag.FromErr(errors.New("rule_json is required"))
@@ -103,6 +110,7 @@ func ValidateAndCreateRoutingRules(Ctx context.Context, d *schema.ResourceData, 
 	if !isJSONString(newAlertRule.RuleJSON) {
 		return nil, diag.FromErr(errors.New("rule_json is not valid JSON"))
 	}
+	newAlertRule.Position = d.Get("position").(int)
 	actions, actionErr := CreateRoutingRuleAction(Ctx, d, m, newAlertRule)
 	if actionErr != nil {
 		return nil, actionErr
@@ -180,6 +188,7 @@ func resourceReadRoutingRules(Ctx context.Context, d *schema.ResourceData, m int
 	}
 	d.Set("actions", flattenRoutingActions(rule))
 	d.Set("name", rule.Name)
+	d.Set("position", rule.Position)
 
 	return diags
 }
