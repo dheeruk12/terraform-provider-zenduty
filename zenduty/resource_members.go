@@ -126,9 +126,12 @@ func resourceMemberRead(ctx context.Context, d *schema.ResourceData, m interface
 	}
 	d.Set("team", member.Team)
 	// The API accepts a username, email, or id in "user" but always returns
-	// the username; keep the config's spelling once set so the choice of
-	// identifier never reads back as a diff. Imports still get the username.
-	if prior := d.Get("user").(string); prior == "" {
+	// the username. Keep the config's spelling when it still identifies the
+	// same person, so the choice of identifier is not a diff — but fall
+	// through to the username otherwise, so a genuine change of member is
+	// still reported as drift.
+	prior := d.Get("user").(string)
+	if prior != member.User.Username && prior != member.User.Email {
 		d.Set("user", member.User.Username)
 	}
 	d.Set("role", member.Role)

@@ -30,11 +30,7 @@ func dataSourceSLA() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"description": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"conditions": {
+						"creation_date": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -74,8 +70,7 @@ func dataSourceSLARead(ctx context.Context, d *schema.ResourceData, m interface{
 		items[i] = map[string]interface{}{
 			"unique_id":        sla.UniqueID,
 			"name":             sla.Name,
-			"description":      sla.Description,
-			"conditions":       sla.Conditions,
+			"creation_date":    sla.CreationDate,
 			"acknowledge_time": sla.AcknowledgeTime,
 			"resolve_time":     sla.ResolveTime,
 			"is_active":        sla.IsActive,

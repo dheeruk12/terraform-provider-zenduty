@@ -41,7 +41,7 @@ func resourceSLA() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Description:      "SLA conditions as a JSON object string.",
-				DiffSuppressFunc: suppressEquivalentJSONDiffs,
+				DiffSuppressFunc: suppressEquivalentJSONObjectDiffs,
 			},
 			"escalations": &schema.Schema{
 				Type:     schema.TypeList,
@@ -111,11 +111,13 @@ func CreateSLA(Ctx context.Context, d *schema.ResourceData, m interface{}) (*cli
 		newSLA.Name = v.(string)
 	}
 	newSLA.Description = d.Get("description").(string)
-	if v, ok := d.GetOk("conditions"); ok {
-		if !isJSONString(v.(string)) {
-			return nil, diag.FromErr(errors.New("conditions is not valid JSON"))
-		}
-		newSLA.Conditions = v.(string)
+	// d.Get, not GetOk: clearing conditions has to reach the server, and the
+	// backend's empty value is "{}" rather than "".
+	newSLA.Conditions = d.Get("conditions").(string)
+	if newSLA.Conditions == "" {
+		newSLA.Conditions = "{}"
+	} else if !isJSONString(newSLA.Conditions) {
+		return nil, diag.FromErr(errors.New("conditions is not valid JSON"))
 	}
 	if v, ok := d.GetOk("acknowledge_time"); ok {
 		newSLA.AcknowledgeTime = v.(int)

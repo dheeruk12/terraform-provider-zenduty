@@ -113,14 +113,37 @@ func TestSuppressEquivalentJSONDiffs(t *testing.T) {
 		want     bool
 	}{
 		{"formatting only", `{"a":1,"b":2}`, "{\n  \"a\": 1,\n  \"b\": 2\n}", true},
-		{"empty vs empty object", "", "{}", true},
+		{"key order only", `{"a":1,"b":2}`, `{"b":2,"a":1}`, true},
 		{"different values", `{"a":1}`, `{"a":2}`, false},
+		// unset is NOT the same as an empty object here: suppressing that
+		// would stop rule_json from ever being written
+		{"empty vs empty object", "", "{}", false},
 		{"both unparseable and equal", "nope", "nope", true},
 		{"both unparseable and different", "nope", "nah", false},
 	}
 	for _, c := range cases {
-		if got := suppressEquivalentJSONDiffs("conditions", c.old, c.new, nil); got != c.want {
+		if got := suppressEquivalentJSONDiffs("rule_json", c.old, c.new, nil); got != c.want {
 			t.Errorf("%s: suppressEquivalentJSONDiffs(%q, %q) = %v, want %v", c.name, c.old, c.new, got, c.want)
+		}
+	}
+}
+
+func TestSuppressEquivalentJSONObjectDiffs(t *testing.T) {
+	cases := []struct {
+		name     string
+		old, new string
+		want     bool
+	}{
+		// the backend stores "{}" as the empty value, so these are the same
+		{"empty vs empty object", "", "{}", true},
+		{"empty object vs empty", "{}", "", true},
+		{"formatting only", `{"a":1}`, "{\n  \"a\": 1\n}", true},
+		{"empty vs non-empty", "", `{"a":1}`, false},
+		{"different values", `{"a":1}`, `{"a":2}`, false},
+	}
+	for _, c := range cases {
+		if got := suppressEquivalentJSONObjectDiffs("conditions", c.old, c.new, nil); got != c.want {
+			t.Errorf("%s: suppressEquivalentJSONObjectDiffs(%q, %q) = %v, want %v", c.name, c.old, c.new, got, c.want)
 		}
 	}
 }

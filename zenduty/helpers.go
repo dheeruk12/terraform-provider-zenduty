@@ -18,15 +18,6 @@ func isJSONString(s string) bool {
 	return json.Unmarshal([]byte(s), &js) == nil
 }
 
-func checkList(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
-
 func IsValidUUID(uuid string) bool {
 	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
 	return r.MatchString(uuid)
@@ -180,19 +171,26 @@ func normalizeJSON(jsonString string) (string, error) {
 }
 
 // suppressEquivalentJSONDiffs suppresses diffs between JSON strings that
-// decode to the same value, and treats an unset value as equivalent to the
-// backend's empty-object default.
+// decode to the same value. Reads store the API's compact, key-sorted JSON, so
+// without this any human-formatted config diffs on every plan.
 func suppressEquivalentJSONDiffs(k, old, new string, d *schema.ResourceData) bool {
-	if old == "" {
-		old = "{}"
-	}
-	if new == "" {
-		new = "{}"
-	}
 	normalizedOld, errOld := normalizeJSON(old)
 	normalizedNew, errNew := normalizeJSON(new)
 	if errOld != nil || errNew != nil {
 		return old == new
 	}
 	return normalizedOld == normalizedNew
+}
+
+// suppressEquivalentJSONObjectDiffs is suppressEquivalentJSONDiffs for fields
+// whose backend default is an empty object, where an unset value and "{}" mean
+// the same thing.
+func suppressEquivalentJSONObjectDiffs(k, old, new string, d *schema.ResourceData) bool {
+	if old == "" {
+		old = "{}"
+	}
+	if new == "" {
+		new = "{}"
+	}
+	return suppressEquivalentJSONDiffs(k, old, new, d)
 }

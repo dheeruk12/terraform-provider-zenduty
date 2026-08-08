@@ -35,6 +35,9 @@ func resourceGlobalRoutingRules() *schema.Resource {
 			"rule_json": {
 				Type:     schema.TypeString,
 				Optional: true,
+				// Read stores the API's compact, key-sorted JSON, so without
+				// this any human-formatted config diffs on every plan.
+				DiffSuppressFunc: suppressEquivalentJSONDiffs,
 			},
 			"position": {
 				Type:        schema.TypeInt,

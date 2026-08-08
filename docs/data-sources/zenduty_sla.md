@@ -30,8 +30,10 @@ output "sla_names" {
 * `slas` - The list of SLAs, each with:
     * `unique_id` - The unique_id of the SLA.
     * `name` - The name of the SLA.
-    * `description` - The description of the SLA.
-    * `conditions` - The SLA conditions as a JSON string.
+    * `creation_date` - When the SLA was created.
     * `acknowledge_time` - Seconds before the acknowledgement SLA is breached.
     * `resolve_time` - Seconds before the resolution SLA is breached.
     * `is_active` - Whether the SLA is active.
+
+The list endpoint does not return `description`, `conditions` or `escalations`.
+Reference the `zenduty_sla` resource, or import it, if you need those.

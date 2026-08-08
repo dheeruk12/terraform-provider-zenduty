@@ -35,7 +35,7 @@ output  "usercontact" {
 
 * `user_id` (Required) - The username of the user to query.
 * `contact_type` (Required) - The contact type of the user to query.
-  values are `1` Email, `2` SMS, `3` Phone, `4` Slack, `5` MS Teams
+  values are `1` Email, `2` SMS, `3` Phone, `4` Slack, `5` MS Teams, `6` Push, `7` Google Chat
 * `value`  (Optional) - The value of the contact type.
 
 ## Attributes Reference

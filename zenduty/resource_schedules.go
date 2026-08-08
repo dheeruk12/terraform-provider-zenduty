@@ -148,6 +148,12 @@ func resourceSchedules() *schema.Resource {
 // plan time: restrictions require a restriction_type, and a restriction may
 // not span more than one period of its type.
 func validateScheduleRestrictions(ctx context.Context, diff *schema.ResourceDiff, m interface{}) error {
+	// Values interpolated from resources that have not been created yet read
+	// as their zero value here, which would report a bogus error. Leave those
+	// to the apply-time checks.
+	if !diff.NewValueKnown("layers") {
+		return nil
+	}
 	layers, _ := diff.Get("layers").([]interface{})
 	for i, layer := range layers {
 		layerMap, ok := layer.(map[string]interface{})
