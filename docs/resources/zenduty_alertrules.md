@@ -75,9 +75,12 @@ resource "zenduty_alertrules" "example_alertrules" {
 * `unique_id` (Computed)(string) - The unique_id of the condition. The API replaces all conditions on every update, so this value changes between applies.
 
 Condition order matters: the API assigns each condition's position from its
-place in the list. Note that most configurations express matching via
-`rule_json` instead — the API stores `conditions` and `rule_json`
-independently, so keep them consistent with each other if you use both.
+place in the list. When the config declares no `conditions` blocks, existing
+conditions (e.g. created in the Zenduty UI) are preserved on update — which
+also means they cannot be removed by simply omitting the blocks. Note that
+most configurations express matching via `rule_json` instead — the API stores
+`conditions` and `rule_json` independently, so keep them consistent with each
+other if you use both.
 
 
 <a id="nestedblock--actions"></a>

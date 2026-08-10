@@ -73,9 +73,15 @@ func resourceAlertRules() *schema.Resource {
 				Computed: true,
 			},
 			"conditions": {
-				Type:        schema.TypeList,
-				Optional:    true,
-				Description: "Structured conditions evaluated against incoming alerts. Order matters: the API assigns each condition's position from its place in the list. Most configurations express matching via rule_json instead; the API stores the two independently.",
+				Type:     schema.TypeList,
+				Optional: true,
+				// Computed so that a config without conditions blocks preserves
+				// whatever conditions exist server-side (e.g. created in the
+				// UI) instead of planning their removal. The API full-replaces
+				// conditions on every update, so update sends the state value
+				// back when the config doesn't manage them.
+				Computed:    true,
+				Description: "Structured conditions evaluated against incoming alerts. Order matters: the API assigns each condition's position from its place in the list. When omitted, existing conditions are preserved. Most configurations express matching via rule_json instead; the API stores the two independently.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"alert_condition_type": {

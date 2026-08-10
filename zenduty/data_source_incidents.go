@@ -3,6 +3,7 @@ package zenduty
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
@@ -16,8 +17,12 @@ func dataSourceIncidents() *schema.Resource {
 		ReadContext: dataSourceIncidentRead,
 		Schema: map[string]*schema.Schema{
 			"number": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Fetch a single incident by its incident number.",
+				ValidateFunc: validation.StringMatch(
+					regexp.MustCompile(`^[0-9]+$`), "must be an incident number",
+				),
 			},
 			"status": {
 				Type:        schema.TypeString,
