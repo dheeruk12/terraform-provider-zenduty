@@ -21,6 +21,7 @@ func Provider() *schema.Provider {
 				Type:        schema.TypeString,
 				Description: "The base url of the Zenduty",
 				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("ZENDUTY_BASE_URL", ""),
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{

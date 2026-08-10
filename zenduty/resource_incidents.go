@@ -2,6 +2,7 @@ package zenduty
 
 import (
 	"context"
+	"regexp"
 	"strconv"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
@@ -11,6 +12,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
+
+// The API appends "\n\n[Created by: First Last(email)]" to the summary of
+// every incident created through it, so the value read back never matches
+// the configured one.
+var createdBySuffix = regexp.MustCompile(`\n\n\[Created by: [^\]]*\]$`)
 
 func resourceIncidents() *schema.Resource {
 	return &schema.Resource{
@@ -52,6 +58,11 @@ func resourceIncidents() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
+				// ignore the server-appended "[Created by: ...]" suffix or
+				// every plan after create forces a replacement
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return createdBySuffix.ReplaceAllString(old, "") == new
+				},
 			},
 			"status": {
 				Type:         schema.TypeInt,

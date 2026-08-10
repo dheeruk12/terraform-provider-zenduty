@@ -25,6 +25,13 @@ func resourceUser() *schema.Resource {
 				Required:         true,
 				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
+				// The API treats team as the invite destination on create and
+				// never returns it, so an imported user has no value in state;
+				// suppress that one-sided diff or every import plans a
+				// replacement.
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return old == "" && d.Id() != ""
+				},
 			},
 			"first_name": {
 				Type:             schema.TypeString,

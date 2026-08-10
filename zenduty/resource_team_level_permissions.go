@@ -28,19 +28,20 @@ func resourceTeamLevelPermissions() *schema.Resource {
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"permissions": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Required: true,
 				MinItems: 1,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "Permissions for the team. The API automatically adds the read permissions implied by the ones you list (e.g. incident_read pulls in team_read, service_read, ...); list the full stored set to avoid plan diffs.",
 			},
 		},
 	}
 }
 
 func validateTeamLeveLPermissionss(Ctx context.Context, d *schema.ResourceData, m interface{}) (*client.TeamLevelPermissions, diag.Diagnostics) {
-	permissions := d.Get("permissions").([]interface{})
+	permissions := d.Get("permissions").(*schema.Set).List()
 	newPermission := &client.TeamLevelPermissions{}
 	team_id := d.Get("team_id").(string)
 	newPermission.UniqueID = team_id

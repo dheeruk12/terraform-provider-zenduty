@@ -30,12 +30,13 @@ func resourceAccountRole() *schema.Resource {
 				Required: true,
 			},
 			"permissions": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Required: true,
 				MinItems: 1,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "Permissions for the role. The API automatically adds the read permissions implied by the ones you list (e.g. incident_read pulls in team_read, service_read, ...); list the full stored set to avoid plan diffs.",
 			},
 		},
 	}
@@ -44,7 +45,7 @@ func resourceAccountRole() *schema.Resource {
 func validateAccountRoles(Ctx context.Context, d *schema.ResourceData, m interface{}) (*client.AccountRole, diag.Diagnostics) {
 	name := d.Get("name").(string)
 	description := d.Get("description").(string)
-	permissions := d.Get("permissions").([]interface{})
+	permissions := d.Get("permissions").(*schema.Set).List()
 	newRole := &client.AccountRole{}
 
 	newRole.Name = name
