@@ -14,7 +14,7 @@ import (
 func resourceAccountRole() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCreateAccountRole,
-		ReadContext:   wrapReadWith404(resourceReadAccountRole),
+		ReadContext:   resourceReadAccountRole,
 		UpdateContext: resourceUpdateAccountRole,
 		DeleteContext: resourceDeleteAccountRole,
 		Importer: &schema.ResourceImporter{
@@ -103,7 +103,7 @@ func resourceReadAccountRole(ctx context.Context, d *schema.ResourceData, m inte
 	apiclient, _ := m.(*Config).Client()
 	role, err := apiclient.AccountRole.GetAccountRoleByID(d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(role.UniqueID)
 	d.Set("name", role.Name)

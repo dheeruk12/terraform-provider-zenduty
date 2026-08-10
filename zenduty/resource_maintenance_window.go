@@ -18,7 +18,7 @@ func resourceMaintenanceWindow() *schema.Resource {
 		CreateContext: resourceCreateManintenances,
 		UpdateContext: resourceUpdateManintenances,
 		DeleteContext: resourceDeleteManintenances,
-		ReadContext:   wrapReadWith404(resourceReadManintenances),
+		ReadContext:   resourceReadManintenances,
 		Importer: &schema.ResourceImporter{
 			State: resourceMaintenanceImporter,
 		},
@@ -198,7 +198,7 @@ func resourceReadManintenances(ctx context.Context, d *schema.ResourceData, m in
 	apiclient, _ := m.(*Config).Client()
 	maintenance, err := apiclient.MaintenanceWindow.GetMaintenanceWindowByID(teamID, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", maintenance.Name)
 	d.Set("repeat_interval", maintenance.RepeatInterval)

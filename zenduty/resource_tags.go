@@ -16,7 +16,7 @@ func resourceTags() *schema.Resource {
 		CreateContext: resourceCreateTags,
 		UpdateContext: resourceUpdateTags,
 		DeleteContext: resourceDeleteTags,
-		ReadContext:   wrapReadWith404(resourceReadTag),
+		ReadContext:   resourceReadTag,
 		Importer: &schema.ResourceImporter{
 			State: resourceTagImporter,
 		},
@@ -101,7 +101,7 @@ func resourceReadTag(ctx context.Context, d *schema.ResourceData, m interface{})
 	team := d.Get("team_id").(string)
 	tag, err := apiclient.Tags.GetTagID(team, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(tag.UniqueID)
 	d.Set("name", tag.Name)

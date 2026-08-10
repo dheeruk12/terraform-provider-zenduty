@@ -16,7 +16,7 @@ func resourceOutgoingRules() *schema.Resource {
 		CreateContext: resourceCreateOutgoingRules,
 		UpdateContext: resourceUpdateOutgoingRules,
 		DeleteContext: resourceDeleteOutgoingRules,
-		ReadContext:   wrapReadWith404(resourceReadOutgoingRules),
+		ReadContext:   resourceReadOutgoingRules,
 		Importer: &schema.ResourceImporter{
 			State: resourceOutgoingRulesImporter,
 		},
@@ -130,7 +130,7 @@ func resourceReadOutgoingRules(Ctx context.Context, d *schema.ResourceData, m in
 
 	rule, err := apiclient.OutgoingRules.GetOutgoingRule(teamID, serviceID, integrationID, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(rule.UniqueID)
 	// normalize like alertrules/routing rules so formatting differences in

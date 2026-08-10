@@ -3,10 +3,12 @@ package zenduty
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/mail"
 	"regexp"
 	"strings"
 
+	"github.com/Zenduty/zenduty-go-sdk/client"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -58,20 +60,17 @@ func emptyString(s string) bool {
 }
 
 // isRetryableError reports whether an SDK error is worth retrying: 5xx, 429,
-// or transport-level failures (timeouts, connection resets). The SDK returns
-// untyped errors with the HTTP status embedded in the message; an error
-// without a status marker never reached the API and is safe to retry.
-var httpStatusRe = regexp.MustCompile(`failed: (\d{3}) `)
-
+// or transport-level failures (timeouts, connection resets). A transport
+// error carries no HTTP status because it never reached the API, and is safe
+// to retry.
 func isRetryableError(err error) bool {
 	if err == nil {
 		return false
 	}
-	m := httpStatusRe.FindStringSubmatch(err.Error())
-	if m == nil {
-		return true
+	if code := client.StatusCode(err); code != 0 {
+		return code == http.StatusTooManyRequests || code >= 500
 	}
-	return m[1] == "429" || m[1][0] == '5'
+	return true
 }
 
 func ValidateUUID() schema.SchemaValidateDiagFunc {

@@ -13,7 +13,7 @@ func resourceGlobalRouter() *schema.Resource {
 		CreateContext: resourceGlobalRouterCreate,
 		UpdateContext: resourceGlobalRouterUpdate,
 		DeleteContext: resourceGlobalRouterDelete,
-		ReadContext:   wrapReadWith404(resourceGlobalRouterRead),
+		ReadContext:   resourceGlobalRouterRead,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -115,7 +115,7 @@ func resourceGlobalRouterRead(ctx context.Context, d *schema.ResourceData, m int
 
 	router, err := apiclient.GlobalRouter.GetGlobalRouter(id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", router.Name)
 	d.Set("integration_key", router.IntegrationKey)

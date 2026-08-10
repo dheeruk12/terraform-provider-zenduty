@@ -20,7 +20,7 @@ func resourcePostIncidentTasks() *schema.Resource {
 		CreateContext: resourceCreatePostIncidentTasks,
 		UpdateContext: resourceUpdatePostIncidentTasks,
 		DeleteContext: resourceDeletePostIncidentTasks,
-		ReadContext:   wrapReadWith404(resourceReadPostIncidentTasks),
+		ReadContext:   resourceReadPostIncidentTasks,
 		Importer: &schema.ResourceImporter{
 			State: resourcePostIncidentTasksImporter,
 		},
@@ -184,7 +184,7 @@ func resourceReadPostIncidentTasks(Ctx context.Context, d *schema.ResourceData, 
 	var diags diag.Diagnostics
 	postincidenttask, err := apiclient.PostIncidentTask.GetPostIncidentTaskByID(teamID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 
 	d.Set("title", postincidenttask.Title)

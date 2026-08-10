@@ -8,6 +8,7 @@ import (
 	"github.com/Zenduty/zenduty-go-sdk/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func dataSourceIncidents() *schema.Resource {
@@ -19,8 +20,16 @@ func dataSourceIncidents() *schema.Resource {
 				Optional: true,
 			},
 			"status": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Filter incidents by status, applied server-side: -1 open (triggered + acknowledged), 1 triggered, 2 acknowledged, 3 resolved.",
+			},
+			"limit": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				Default:      100,
+				ValidateFunc: validation.IntAtLeast(0),
+				Description:  "Maximum number of incidents to fetch (the API pages 10 at a time). 0 fetches every page — use with care on accounts with a large incident history.",
 			},
 			"results": &schema.Schema{
 				Type:     schema.TypeList,
@@ -197,6 +206,16 @@ func dataSourceIncidentRead(ctx context.Context, d *schema.ResourceData, m inter
 
 	number := d.Get("number").(string)
 	statusFilter := d.Get("status").(string)
+	limit := d.Get("limit").(int)
+
+	status := 0
+	if statusFilter != "" {
+		var err error
+		status, err = strconv.Atoi(statusFilter)
+		if err != nil || status < -1 || status > 3 {
+			return diag.Errorf("status must be one of -1 (open), 1 (triggered), 2 (acknowledged), 3 (resolved), got %q", statusFilter)
+		}
+	}
 
 	var results []client.Incidents
 	if number != "" {
@@ -205,26 +224,28 @@ func dataSourceIncidentRead(ctx context.Context, d *schema.ResourceData, m inter
 			return diag.FromErr(err)
 		}
 		results = []client.Incidents{*incident}
-	} else {
-		incidents, err := apiclient.Incidents.GetIncidents()
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		results = incidents.Results
-	}
-
-	if statusFilter != "" {
-		status, err := strconv.Atoi(statusFilter)
-		if err != nil {
-			return diag.Errorf("status must be a number, got %q", statusFilter)
-		}
-		filtered := results[:0]
-		for _, result := range results {
-			if result.Status == status {
-				filtered = append(filtered, result)
+		if status != 0 {
+			open := incident.Status == 1 || incident.Status == 2
+			if incident.Status != status && !(status == -1 && open) {
+				results = nil
 			}
 		}
-		results = filtered
+	} else {
+		// The list endpoint filters by status server-side and pages 10
+		// results at a time; follow Next until done or the limit is reached.
+		for page := 1; ; page++ {
+			pageResult, err := apiclient.Incidents.ListIncidents(&client.ListIncidentsOptions{Page: page, Status: status})
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			results = append(results, pageResult.Results...)
+			if pageResult.Next == "" || len(pageResult.Results) == 0 || (limit > 0 && len(results) >= limit) {
+				break
+			}
+		}
+		if limit > 0 && len(results) > limit {
+			results = results[:limit]
+		}
 	}
 
 	items := make([]map[string]interface{}, len(results))
@@ -274,7 +295,7 @@ func dataSourceIncidentRead(ctx context.Context, d *schema.ResourceData, m inter
 	if err := d.Set("results", items); err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(fmt.Sprintf("incidents/%s/%s", number, statusFilter))
+	d.SetId(fmt.Sprintf("incidents/%s/%s/%d", number, statusFilter, limit))
 	return diags
 
 }

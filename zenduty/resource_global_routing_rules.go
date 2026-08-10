@@ -17,7 +17,7 @@ func resourceGlobalRoutingRules() *schema.Resource {
 		CreateContext: resourceCreateRoutingRules,
 		UpdateContext: resourceUpdateRoutingRules,
 		DeleteContext: resourceDeleteRoutingRules,
-		ReadContext:   wrapReadWith404(resourceReadRoutingRules),
+		ReadContext:   resourceReadRoutingRules,
 		Importer: &schema.ResourceImporter{
 			State: resourceRouterRulesImporter,
 		},
@@ -175,7 +175,7 @@ func resourceReadRoutingRules(Ctx context.Context, d *schema.ResourceData, m int
 	routerID := d.Get("router_id").(string)
 	rule, err := apiclient.GlobalRouter.GetGlobalRoutingRule(routerID, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(rule.UniqueID)
 	if rule.RuleJSON != "" {

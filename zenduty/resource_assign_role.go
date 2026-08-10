@@ -13,7 +13,7 @@ import (
 func resourceAssignAccountRole() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceAssignRole,
-		ReadContext:   wrapReadWith404(resourceReadRole),
+		ReadContext:   resourceReadRole,
 		UpdateContext: resourceUpdateAssignRole,
 		DeleteContext: resourceRemoveAssignedRole,
 		Schema: map[string]*schema.Schema{

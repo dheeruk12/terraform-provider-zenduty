@@ -14,8 +14,9 @@ description: |-
 ### Optional
 
 - **id** (String) The ID of this resource.
-- **number** (String)
-- **status** (String)
+- **number** (String) Fetch a single incident by its incident number.
+- **status** (String) Filter incidents by status, applied server-side: `-1` open (triggered + acknowledged), `1` triggered, `2` acknowledged, `3` resolved.
+- **limit** (Number) Maximum number of incidents to fetch; the API pages 10 at a time and pages are fetched until the limit is reached. Defaults to `100`. `0` fetches every incident — use with care on accounts with a large incident history.
 
 ### Read-Only
 

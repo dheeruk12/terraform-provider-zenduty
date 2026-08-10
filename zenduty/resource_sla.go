@@ -18,7 +18,7 @@ func resourceSLA() *schema.Resource {
 		CreateContext: resourceCreateSLA,
 		UpdateContext: resourceUpdateSLA,
 		DeleteContext: resourceDeleteSLA,
-		ReadContext:   wrapReadWith404(resourceReadSLA),
+		ReadContext:   resourceReadSLA,
 		Importer: &schema.ResourceImporter{
 			State: resourceSLAImporter,
 		},
@@ -289,7 +289,7 @@ func resourceReadSLA(Ctx context.Context, d *schema.ResourceData, m interface{})
 	var diags diag.Diagnostics
 	sla, err := apiclient.Sla.GetSLAByID(teamID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", sla.Name)
 	d.Set("description", sla.Description)

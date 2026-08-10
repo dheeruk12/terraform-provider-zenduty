@@ -3,7 +3,12 @@ package zenduty
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"testing"
+
+	"github.com/Zenduty/zenduty-go-sdk/client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func TestIsValidUUID(t *testing.T) {
@@ -66,28 +71,73 @@ func TestIsJSONString(t *testing.T) {
 	}
 }
 
-func TestIsRetryableError(t *testing.T) {
-	apiErr := func(status string) error {
-		return fmt.Errorf("POST APIs call to https://www.zenduty.com/api/account/teams/ failed: %s error: {}", status)
+// apiErr builds the typed error the SDK returns for a non-2xx response.
+func apiErr(status int) error {
+	return &client.Error{
+		Code: status,
+		ErrorResponse: &client.Response{
+			Response: &http.Response{
+				StatusCode: status,
+				Status:     fmt.Sprintf("%d %s", status, http.StatusText(status)),
+				Request: &http.Request{
+					Method: "GET",
+					URL:    &url.URL{Scheme: "https", Host: "www.zenduty.com", Path: "/api/account/teams/"},
+				},
+			},
+		},
 	}
+}
+
+func TestIsRetryableError(t *testing.T) {
 	cases := []struct {
 		name string
 		err  error
 		want bool
 	}{
 		{"nil", nil, false},
-		{"bad request", apiErr("400 Bad Request"), false},
-		{"unauthorized", apiErr("401 Unauthorized"), false},
-		{"not found", apiErr("404 Not Found"), false},
-		{"rate limited", apiErr("429 Too Many Requests"), true},
-		{"server error", apiErr("500 Internal Server Error"), true},
-		{"gateway timeout", apiErr("504 Gateway Timeout"), true},
+		{"bad request", apiErr(400), false},
+		{"unauthorized", apiErr(401), false},
+		{"not found", apiErr(404), false},
+		{"rate limited", apiErr(429), true},
+		{"server error", apiErr(500), true},
+		{"gateway timeout", apiErr(504), true},
 		// transport failures never reached the API and are safe to retry
 		{"transport", errors.New("dial tcp: i/o timeout"), true},
 	}
 	for _, c := range cases {
 		if got := isRetryableError(c.err); got != c.want {
 			t.Errorf("%s: isRetryableError() = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestHandleReadError(t *testing.T) {
+	testSchema := map[string]*schema.Schema{
+		"name": {Type: schema.TypeString, Optional: true},
+	}
+
+	cases := []struct {
+		name        string
+		err         error
+		wantErr     bool
+		wantCleared bool
+	}{
+		{"404 clears state without error", apiErr(404), false, true},
+		{"other API errors surface", apiErr(500), true, false},
+		{"transport errors surface", errors.New("dial tcp: i/o timeout"), true, false},
+		// the old string-matching wrapper would have dropped this live
+		// resource from state
+		{"404 mentioned in message only", errors.New("upstream said 404 Not Found"), true, false},
+	}
+	for _, c := range cases {
+		d := schema.TestResourceDataRaw(t, testSchema, map[string]interface{}{})
+		d.SetId("some-id")
+		diags := handleReadError(d, c.err)
+		if diags.HasError() != c.wantErr {
+			t.Errorf("%s: HasError() = %v, want %v", c.name, diags.HasError(), c.wantErr)
+		}
+		if gotCleared := d.Id() == ""; gotCleared != c.wantCleared {
+			t.Errorf("%s: id cleared = %v, want %v", c.name, gotCleared, c.wantCleared)
 		}
 	}
 }

@@ -19,7 +19,7 @@ func resourceIntegrations() *schema.Resource {
 		CreateContext: resourceIntegrationCreate,
 		UpdateContext: resourceIntegrationUpdate,
 		DeleteContext: resourceIntegrationDelete,
-		ReadContext:   wrapReadWith404(resourceIntegrationRead),
+		ReadContext:   resourceIntegrationRead,
 		Importer: &schema.ResourceImporter{
 			State: resourceIntegrationImporter,
 		},
@@ -183,7 +183,7 @@ func resourceIntegrationRead(ctx context.Context, d *schema.ResourceData, m inte
 
 	integration, err := apiclient.Integrations.GetIntegrationByID(teamID, serviceID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", integration.Name)
 	d.Set("application", integration.Application)

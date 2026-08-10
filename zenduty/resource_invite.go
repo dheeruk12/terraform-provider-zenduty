@@ -18,7 +18,7 @@ func resourceInvite() *schema.Resource {
 		CreateContext:      resourceInviteCreate,
 		UpdateContext:      resourceInviteUpdate,
 		DeleteContext:      resourceInviteDelete,
-		ReadContext:        wrapReadWith404(resourceInviteRead),
+		ReadContext:        resourceInviteRead,
 		Schema: map[string]*schema.Schema{
 			"team": {
 				Type:     schema.TypeString,

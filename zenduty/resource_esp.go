@@ -19,7 +19,7 @@ func resourceEsp() *schema.Resource {
 		CreateContext: resourceCreateEsp,
 		UpdateContext: resourceUpdateEsp,
 		DeleteContext: resourceDeleteEsp,
-		ReadContext:   wrapReadWith404(resourceReadEsp),
+		ReadContext:   resourceReadEsp,
 		Importer: &schema.ResourceImporter{
 			State: resourceEscalationPolicyImporter,
 		},
@@ -293,7 +293,7 @@ func resourceReadEsp(Ctx context.Context, d *schema.ResourceData, m interface{})
 	var diags diag.Diagnostics
 	esp, err := apiclient.Esp.GetEscalationPolicyByID(teamID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", esp.Name)
 	d.Set("team_id", esp.Team)

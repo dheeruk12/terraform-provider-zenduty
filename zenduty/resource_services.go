@@ -18,7 +18,7 @@ func resourceServices() *schema.Resource {
 		CreateContext: resourceCreateServices,
 		UpdateContext: resourceUpdateServices,
 		DeleteContext: resourceDeleteServices,
-		ReadContext:   wrapReadWith404(resourceReadServices),
+		ReadContext:   resourceReadServices,
 		Importer: &schema.ResourceImporter{
 			State: resourceServiceImporter,
 		},
@@ -218,7 +218,7 @@ func resourceReadServices(Ctx context.Context, d *schema.ResourceData, m interfa
 	var diags diag.Diagnostics
 	service, err := apiclient.Services.GetServicesByID(teamID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", service.Name)
 	d.Set("escalation_policy", service.EscalationPolicy)

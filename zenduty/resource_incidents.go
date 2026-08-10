@@ -17,7 +17,7 @@ func resourceIncidents() *schema.Resource {
 		CreateContext: resourceIncidentsCreate,
 		UpdateContext: resourceIncidentUpdate,
 		DeleteContext: resourceIncidentDelete,
-		ReadContext:   wrapReadWith404(resourceIncidentRead),
+		ReadContext:   resourceIncidentRead,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -149,7 +149,7 @@ func resourceIncidentRead(ctx context.Context, d *schema.ResourceData, m interfa
 	var diags diag.Diagnostics
 	incident, err := apiclient.Incidents.GetIncidentByNumber(d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("title", incident.Title)
 	d.Set("summary", incident.Summary)

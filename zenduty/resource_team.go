@@ -15,7 +15,7 @@ import (
 func resourceTeam() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceTeamCreate,
-		ReadContext:   wrapReadWith404(resourceTeamRead),
+		ReadContext:   resourceTeamRead,
 		UpdateContext: resourceTeamUpdate,
 		DeleteContext: resourceTeamDelete,
 		Importer: &schema.ResourceImporter{
@@ -119,7 +119,7 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	t, err := apiclient.Teams.GetTeamByID(id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", t.Name)
 	d.Set("owner", t.Owner)

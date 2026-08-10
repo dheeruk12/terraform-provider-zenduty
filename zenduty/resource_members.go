@@ -16,7 +16,7 @@ import (
 func resourceMembers() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceMemberCreate,
-		ReadContext:   wrapReadWith404(resourceMemberRead),
+		ReadContext:   resourceMemberRead,
 		UpdateContext: resourceMemberUpdate,
 		DeleteContext: resourceMemberDelete,
 		Importer: &schema.ResourceImporter{
@@ -122,7 +122,7 @@ func resourceMemberRead(ctx context.Context, d *schema.ResourceData, m interface
 	var diags diag.Diagnostics
 	member, err := apiclient.Members.GetTeamMembersByID(team, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("team", member.Team)
 	// The API accepts a username, email, or id in "user" but always returns

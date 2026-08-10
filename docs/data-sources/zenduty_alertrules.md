@@ -45,6 +45,11 @@ The following attributes are exported as list of maps:
 * `unique_id` - The unique_id of the alert rule
 * `description` - The description of the alert rule
 * `rule_json` - The JSON representation of the alert rule
+* `conditions` - The structured conditions of the alert rule, in position order, as a list of maps:
+    * `unique_id` - The unique_id of the condition
+    * `alert_condition_type` - `1` matches the alert type, `2` matches a payload field
+    * `alert_field` - The field the condition inspects
+    * `pattern` - The pattern the field is matched against
 * `actions` - The actions of the alert rule as a list of maps:
     * `unique_id` - The unique_id of the action
     * `action_type` - The type of the action

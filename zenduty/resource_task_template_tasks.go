@@ -19,7 +19,7 @@ func resourceTaskTemplateTaskTasks() *schema.Resource {
 		CreateContext: resourceCreateTaskTemplateTaskTasks,
 		UpdateContext: resourceUpdateTaskTemplateTaskTasks,
 		DeleteContext: resourceDeleteTaskTemplateTaskTasks,
-		ReadContext:   wrapReadWith404(resourceReadTaskTemplateTaskTasks),
+		ReadContext:   resourceReadTaskTemplateTaskTasks,
 		Importer: &schema.ResourceImporter{
 			State: resourceTaskTemplateTaskTasksImporter,
 		},
@@ -175,7 +175,7 @@ func resourceReadTaskTemplateTaskTasks(Ctx context.Context, d *schema.ResourceDa
 	var diags diag.Diagnostics
 	tasktemplatetask, err := apiclient.TaskTemplate.GetTaskTemplateTaskByID(teamID, task_id, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("unique_id", tasktemplatetask.UniqueID)
 	d.Set("title", tasktemplatetask.Title)

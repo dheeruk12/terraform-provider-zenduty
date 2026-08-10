@@ -16,7 +16,7 @@ func resourcePriority() *schema.Resource {
 		CreateContext: resourceCreatePriority,
 		UpdateContext: resourceUpdatePriority,
 		DeleteContext: resourceDeletePriority,
-		ReadContext:   wrapReadWith404(resourceReadPriority),
+		ReadContext:   resourceReadPriority,
 		Importer: &schema.ResourceImporter{
 			State: resourcePriorityImporter,
 		},
@@ -108,7 +108,7 @@ func resourceReadPriority(ctx context.Context, d *schema.ResourceData, m interfa
 	team := d.Get("team_id").(string)
 	tag, err := apiclient.Priority.GetPriorityByID(team, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(tag.UniqueID)
 	d.Set("name", tag.Name)

@@ -54,7 +54,30 @@ resource "zenduty_alertrules" "example_alertrules" {
 * `stop` (Optional)(bool) - Stop evaluating later alert rules when this rule matches. Defaults to `false`.
 * `rule_type` (Optional)(Number) - `0` requires all conditions to match, `1` requires any condition to match.
 * `position` (Optional)(Number) - Evaluation order of the rule. Assigned by the server when omitted.
+* `conditions` (Optional) - Structured conditions evaluated against incoming alerts. (see [below for nested schema](#nestedblock--conditions))
 * `actions` (Optional) - The actions to be performed when the rule matches. (see [below for nested schema](#nestedblock--actions))
+
+<a id="nestedblock--conditions"></a>
+
+## Conditions
+
+```hcl
+    conditions {
+        alert_condition_type = 2
+        alert_field          = "summary"
+        pattern              = "CRITICAL"
+    }
+```
+
+* `alert_condition_type` (Optional)(Number) - `1` matches the alert type, `2` matches a payload field. Defaults to `1`. New types may appear server-side; only the lower bound is validated in Terraform.
+* `alert_field` (Required)(string) - The field the condition inspects: the alert attribute for type `1`, the payload field name for type `2`.
+* `pattern` (Optional)(string) - The pattern the field is matched against.
+* `unique_id` (Computed)(string) - The unique_id of the condition. The API replaces all conditions on every update, so this value changes between applies.
+
+Condition order matters: the API assigns each condition's position from its
+place in the list. Note that most configurations express matching via
+`rule_json` instead — the API stores `conditions` and `rule_json`
+independently, so keep them consistent with each other if you use both.
 
 
 <a id="nestedblock--actions"></a>

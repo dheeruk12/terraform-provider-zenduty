@@ -64,13 +64,13 @@ func dataSourcePostIncidentTasksRead(ctx context.Context, d *schema.ResourceData
 
 	teamID := d.Get("team_id").(string)
 
-	page, err := apiclient.PostIncidentTask.GetPostIncidentTasks(teamID)
+	tasks, err := apiclient.PostIncidentTask.GetAllPostIncidentTasks(teamID)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	items := make([]map[string]interface{}, len(page.Results))
-	for i, task := range page.Results {
+	items := make([]map[string]interface{}, len(tasks))
+	for i, task := range tasks {
 		item := map[string]interface{}{
 			"unique_id":     task.UniqueID,
 			"title":         task.Title,

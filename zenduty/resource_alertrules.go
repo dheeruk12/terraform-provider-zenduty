@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -18,7 +19,7 @@ func resourceAlertRules() *schema.Resource {
 		CreateContext: resourceCreateAlertRules,
 		UpdateContext: resourceUpdateAlertRules,
 		DeleteContext: resourceDeleteAlertRules,
-		ReadContext:   wrapReadWith404(resourceReadAlertRules),
+		ReadContext:   resourceReadAlertRules,
 		Importer: &schema.ResourceImporter{
 			State: resourceAlertRulesImporter,
 		},
@@ -70,6 +71,36 @@ func resourceAlertRules() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Computed: true,
+			},
+			"conditions": {
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "Structured conditions evaluated against incoming alerts. Order matters: the API assigns each condition's position from its place in the list. Most configurations express matching via rule_json instead; the API stores the two independently.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"alert_condition_type": {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Default:      1,
+							ValidateFunc: validation.IntAtLeast(1),
+							Description:  "1 matches the alert type, 2 matches a payload field. New types may appear server-side; only the lower bound is enforced here.",
+						},
+						"alert_field": {
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "The field the condition inspects: the alert attribute for type 1, the payload field name for type 2.",
+						},
+						"pattern": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The pattern the field is matched against.",
+						},
+						"unique_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
 			},
 			"actions": &schema.Schema{
 				Type:     schema.TypeList,
@@ -274,6 +305,7 @@ func ValidateAncCreateAlertRules(Ctx context.Context, d *schema.ResourceData, m 
 	newAlertRule.Stop = d.Get("stop").(bool)
 	newAlertRule.RuleType = d.Get("rule_type").(int)
 	newAlertRule.Position = d.Get("position").(int)
+	newAlertRule.Conditions = expandAlertRuleConditions(d.Get("conditions").([]interface{}))
 	actions, actionErr := AlertRuleAction(Ctx, d, m, newAlertRule)
 	if actionErr != nil {
 		return nil, actionErr
@@ -340,7 +372,7 @@ func resourceReadAlertRules(Ctx context.Context, d *schema.ResourceData, m inter
 
 	rule, err := apiclient.AlertRules.GetAlertRule(teamID, serviceID, integrationID, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(rule.UniqueID)
 	// Normalize JSON before setting to avoid formatting issues
@@ -357,12 +389,47 @@ func resourceReadAlertRules(Ctx context.Context, d *schema.ResourceData, m inter
 	}
 
 	d.Set("actions", flattenAlertActions(rule, d.Get("actions").([]interface{})))
+	d.Set("conditions", flattenAlertRuleConditions(rule.Conditions))
 	d.Set("description", rule.Description)
 	d.Set("stop", rule.Stop)
 	d.Set("rule_type", rule.RuleType)
 	d.Set("position", rule.Position)
 
 	return diags
+}
+
+// expandAlertRuleConditions maps config conditions to the API shape. Position
+// is derived from list order because the API reassigns 1..N from payload
+// order on every update.
+func expandAlertRuleConditions(conditions []interface{}) []client.AlertRuleCondition {
+	expanded := make([]client.AlertRuleCondition, len(conditions))
+	for i, condition := range conditions {
+		conditionMap := condition.(map[string]interface{})
+		expanded[i] = client.AlertRuleCondition{
+			AlertConditionType: conditionMap["alert_condition_type"].(int),
+			AlertField:         conditionMap["alert_field"].(string),
+			Pattern:            conditionMap["pattern"].(string),
+			Position:           i + 1,
+		}
+	}
+	return expanded
+}
+
+// flattenAlertRuleConditions maps API conditions back to state in position
+// order, which is the order the config list was written in.
+func flattenAlertRuleConditions(conditions []client.AlertRuleCondition) []map[string]interface{} {
+	flattened := make([]map[string]interface{}, len(conditions))
+	sorted := append([]client.AlertRuleCondition(nil), conditions...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Position < sorted[j].Position })
+	for i, condition := range sorted {
+		flattened[i] = map[string]interface{}{
+			"alert_condition_type": condition.AlertConditionType,
+			"alert_field":          condition.AlertField,
+			"pattern":              condition.Pattern,
+			"unique_id":            condition.UniqueID,
+		}
+	}
+	return flattened
 }
 
 // flattenAlertActions maps API actions back to state. For action types that

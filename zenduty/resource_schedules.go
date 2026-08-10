@@ -20,7 +20,7 @@ func resourceSchedules() *schema.Resource {
 		CreateContext: resourceCreateSchedule,
 		UpdateContext: resourceUpdateSchedule,
 		DeleteContext: resourceDeleteSchedule,
-		ReadContext:   wrapReadWith404(resourceReadSchedule),
+		ReadContext:   resourceReadSchedule,
 		Importer: &schema.ResourceImporter{
 			State: resourceScheduleImporter,
 		},
@@ -457,7 +457,7 @@ func resourceReadSchedule(Ctx context.Context, d *schema.ResourceData, m interfa
 	var diags diag.Diagnostics
 	service, err := apiclient.Schedules.GetScheduleByID(teamID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", service.Name)
 	d.Set("summary", service.Summary)

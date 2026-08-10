@@ -21,6 +21,8 @@ data "zenduty_post_incident_tasks" "team_tasks" {
 
 * `team_id` (Required) - The unique_id of the team whose post-incident tasks to list.
 
+All pages of the API's paginated response are fetched, so the list is complete.
+
 ## Attributes Reference
 
 * `tasks` - The list of tasks, each with:

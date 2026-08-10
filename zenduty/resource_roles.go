@@ -18,7 +18,7 @@ func resourceRoles() *schema.Resource {
 		CreateContext: resourceRoleCreate,
 		UpdateContext: resourceRoleUpdate,
 		DeleteContext: resourceRoleDelete,
-		ReadContext:   wrapReadWith404(resourceRoleRead),
+		ReadContext:   resourceRoleRead,
 		Importer: &schema.ResourceImporter{
 			State: resourceIncidentRoleImporter,
 		},
@@ -129,7 +129,7 @@ func resourceRoleRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	var diags diag.Diagnostics
 	role, err := apiclient.Roles.GetRolesByID(teamID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("title", role.Title)
 	d.Set("description", role.Description)

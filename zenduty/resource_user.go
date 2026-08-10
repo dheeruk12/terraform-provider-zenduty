@@ -13,7 +13,7 @@ import (
 func resourceUser() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCreateUser,
-		ReadContext:   wrapReadWith404(resourceUserRead),
+		ReadContext:   resourceUserRead,
 		UpdateContext: resourceUpdateUser,
 		DeleteContext: resourceDeleteUser,
 		Importer: &schema.ResourceImporter{
@@ -100,7 +100,7 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	apiclient, _ := m.(*Config).Client()
 	user, err := apiclient.Users.GetUser(d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(user.User.Username)
 	d.Set("role", user.Role)

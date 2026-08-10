@@ -14,7 +14,7 @@ import (
 func resourceTeamLevelPermissions() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCreateTeamLeveLPermissions,
-		ReadContext:   wrapReadWith404(resourceReadTeamLeveLPermissions),
+		ReadContext:   resourceReadTeamLeveLPermissions,
 		UpdateContext: resourceUpdateTeamLeveLPermissions,
 		DeleteContext: resourceDeleteTeamLeveLPermissions,
 		Importer: &schema.ResourceImporter{
@@ -100,7 +100,7 @@ func resourceReadTeamLeveLPermissions(ctx context.Context, d *schema.ResourceDat
 	apiclient, _ := m.(*Config).Client()
 	teamPermissions, err := apiclient.Teams.GetTeamLevelPermissions(d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(teamPermissions.UniqueID)
 	d.Set("team_id", teamPermissions.UniqueID)

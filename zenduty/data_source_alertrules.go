@@ -60,6 +60,30 @@ func dataSourceAlertRules() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
+						"conditions": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"unique_id": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+									"alert_condition_type": {
+										Type:     schema.TypeInt,
+										Computed: true,
+									},
+									"alert_field": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+									"pattern": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+								},
+							},
+						},
 						"actions": &schema.Schema{
 							Type:     schema.TypeList,
 							Computed: true,
@@ -135,6 +159,7 @@ func dataSourceAlertRulesRead(ctx context.Context, d *schema.ResourceData, m int
 		item["stop"] = rule.Stop
 		item["unique_id"] = rule.UniqueID
 		item["description"] = rule.Description
+		item["conditions"] = flattenAlertRuleConditions(rule.Conditions)
 		actions := make([]map[string]interface{}, len(rule.Actions))
 		for j, action := range rule.Actions {
 			rule := make(map[string]interface{})
@@ -175,6 +200,7 @@ func dataSourceAlertRulesRead(ctx context.Context, d *schema.ResourceData, m int
 			item["stop"] = rule.Stop
 			item["unique_id"] = rule.UniqueID
 			item["description"] = rule.Description
+			item["conditions"] = flattenAlertRuleConditions(rule.Conditions)
 			actions := make([]map[string]interface{}, len(rule.Actions))
 			for j, action := range rule.Actions {
 				rule := make(map[string]interface{})
