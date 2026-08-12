@@ -54,8 +54,9 @@ func resourceSchedules() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Name of the layer. Zenduty allows unnamed layers, so this may be omitted or empty.",
 						},
 						"shift_length": {
 							Type:         schema.TypeInt,
@@ -71,9 +72,9 @@ func resourceSchedules() *schema.Resource {
 							Optional: true,
 						},
 						"users": {
-							Type:     schema.TypeList,
-							Required: true,
-							MinItems: 1,
+							Type:        schema.TypeList,
+							Required:    true,
+							Description: "Usernames rotating through the layer. Zenduty allows layers with no users, so the list may be empty.",
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -121,8 +122,9 @@ func resourceSchedules() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Name of the override. Zenduty allows unnamed overrides, so this may be omitted or empty.",
 						},
 						"start_time": {
 							Type:     schema.TypeString,
@@ -237,10 +239,8 @@ func buildScheduleLayer(ctx context.Context, d *schema.ResourceData, TimeZone st
 		newLayer := client.CreateLayers{}
 
 		if v, ok := layerMap["name"]; ok {
-			if v.(string) == "" {
-				return nil, diag.FromErr(errors.New("name must not be empty"))
-			}
-
+			// The API permits unnamed layers (reads return name: "" for
+			// them), so an empty name is passed through as-is.
 			newLayer.Name = v.(string)
 		}
 		// if v, ok := layerMap["time_zone"]; ok {

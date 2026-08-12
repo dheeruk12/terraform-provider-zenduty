@@ -46,7 +46,7 @@ resource "zenduty_task_template_tasks" "demotask" {
 * `team_id` - (Required) The unique_id of team.
 * `task_template_id` - (Required) The unique_id of tasktemplate to create the tasktemplatetasks in.
 * `title` - (Required) The title of the task.
-* `description`  - (Required) The description of the task.
+* `description`  - (Optional) The description of the task. May be omitted or empty.
 * `role` - (Optional) The unique_id of incident role attached to the task
 * `due_in` - (Optional) Time in minutes to complete the task `-1` => no due time
 

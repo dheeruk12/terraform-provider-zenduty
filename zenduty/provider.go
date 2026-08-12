@@ -66,6 +66,7 @@ func Provider() *schema.Provider {
 			"zenduty_priorities":           dataSourcePriorities(),
 			"zenduty_maintenance_window":   dataSourceMaintenanceWindow(),
 			"zenduty_usercontact":          dataSourceUserContacts(),
+			"zenduty_applications":         dataSourceApplications(),
 			"zenduty_globalrouter":         dataSourceGlobalRouter(),
 			"zenduty_global_routing_rules": dataSourceGlobalRoutingRules(),
 			"zenduty_members":              dataSourceMembers(),

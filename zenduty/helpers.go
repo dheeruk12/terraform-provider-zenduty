@@ -149,6 +149,33 @@ func ValidateRequired() schema.SchemaValidateDiagFunc {
 
 }
 
+// ValidateNonZeroLength rejects only zero-length strings. Unlike
+// ValidateRequired it accepts whitespace-only values, which the Zenduty API
+// permits for some fields (e.g. a user's last name) — rejecting them would
+// make real remote state unrepresentable in config.
+func ValidateNonZeroLength() schema.SchemaValidateDiagFunc {
+	return func(v interface{}, path cty.Path) diag.Diagnostics {
+		var diags diag.Diagnostics
+		s, ok := v.(string)
+		if !ok {
+			diags = append(diags, diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  "Invalid",
+				Detail:   "expected type of string",
+			})
+			return diags
+		}
+		if len(s) == 0 {
+			diags = append(diags, diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  "This field is required",
+				Detail:   "This field cannot be empty",
+			})
+		}
+		return diags
+	}
+}
+
 func generateUUID() string {
 	id := uuid.New()
 	uuidString := id.String()

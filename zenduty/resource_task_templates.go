@@ -38,8 +38,9 @@ func resourceTaskTemplates() *schema.Resource {
 				Required: true,
 			},
 			"summary": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Summary of the template. Zenduty allows templates without a summary, so this may be omitted or empty.",
 			},
 			"creation_date": {
 				Type:     schema.TypeString,

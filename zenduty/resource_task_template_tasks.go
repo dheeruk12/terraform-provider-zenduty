@@ -50,8 +50,9 @@ func resourceTaskTemplateTaskTasks() *schema.Resource {
 				Required: true,
 			},
 			"description": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Description of the task. Zenduty allows tasks without a description, so this may be omitted or empty.",
 			},
 			"due_in": {
 				Type:         schema.TypeInt,

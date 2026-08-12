@@ -22,13 +22,16 @@ func resourceUser() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"team": {
 				Type:             schema.TypeString,
-				Required:         true,
+				Optional:         true,
 				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
+				Description:      "Invite destination team. Required when creating a user (enforced at create time).",
 				// The API treats team as the invite destination on create and
-				// never returns it, so an imported user has no value in state;
-				// suppress that one-sided diff or every import plans a
-				// replacement.
+				// never returns it, so an imported user has no value in state.
+				// Optional (not Required) so config generated from an import
+				// (team unknowable, rendered as null) still validates; create
+				// enforces it instead. The suppress hides the one-sided diff
+				// or every import plans a replacement.
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 					return old == "" && d.Id() != ""
 				},
@@ -39,9 +42,11 @@ func resourceUser() *schema.Resource {
 				ValidateDiagFunc: ValidateRequired(),
 			},
 			"last_name": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ValidateDiagFunc: ValidateRequired(),
+				Type:     schema.TypeString,
+				Required: true,
+				// The API permits whitespace-only last names (and returns
+				// them on reads), so only zero-length values are rejected
+				ValidateDiagFunc: ValidateNonZeroLength(),
 			},
 			"email": {
 				Type:             schema.TypeString,
@@ -61,6 +66,9 @@ func resourceUser() *schema.Resource {
 func resourceCreateUser(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 
 	team := d.Get("team").(string)
+	if emptyString(team) {
+		return diag.Errorf("team is required to create a user: it is the invite destination team")
+	}
 	firstName := d.Get("first_name").(string)
 	lastName := d.Get("last_name").(string)
 	email := d.Get("email").(string)

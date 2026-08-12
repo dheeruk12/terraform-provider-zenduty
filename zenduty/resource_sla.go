@@ -44,9 +44,9 @@ func resourceSLA() *schema.Resource {
 				DiffSuppressFunc: suppressEquivalentJSONObjectDiffs,
 			},
 			"escalations": &schema.Schema{
-				Type:     schema.TypeList,
-				Required: true,
-				MinItems: 1,
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "Escalations for SLA breaches. Zenduty allows SLAs without escalations, so this may be omitted.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"unique_id": {
@@ -87,13 +87,15 @@ func resourceSLA() *schema.Resource {
 			},
 			"acknowledge_time": {
 				Type:         schema.TypeInt,
-				Required:     true,
-				ValidateFunc: validation.IntAtLeast(1),
+				Optional:     true,
+				ValidateFunc: validation.IntAtLeast(0),
+				Description:  "Acknowledge SLA target time. 0 (the API default) disables the acknowledge target.",
 			},
 			"resolve_time": {
 				Type:         schema.TypeInt,
-				Required:     true,
-				ValidateFunc: validation.IntAtLeast(1),
+				Optional:     true,
+				ValidateFunc: validation.IntAtLeast(0),
+				Description:  "Resolve SLA target time. 0 (the API default) disables the resolve target.",
 			},
 			"is_active": {
 				Type:     schema.TypeBool,

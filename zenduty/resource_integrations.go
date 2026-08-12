@@ -49,6 +49,9 @@ func resourceIntegrations() *schema.Resource {
 			"summary": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
+				Description: "Summary of the integration. The API rejects blank summaries on create," +
+					" so when omitted the integration's name is used.",
 			},
 			"integration_key": {
 				Type:      schema.TypeString,
@@ -90,9 +93,12 @@ func resourceIntegrationCreate(ctx context.Context, d *schema.ResourceData, m in
 	teamID := d.Get("team_id").(string)
 	serviceID := d.Get("service_id").(string)
 	summary := d.Get("summary").(string)
-	if summary != "" {
-		newIntegration.Summary = summary
+	if summary == "" {
+		// the create API rejects blank summaries, but integrations exported
+		// from another instance may legitimately have one
+		summary = d.Get("name").(string)
 	}
+	newIntegration.Summary = summary
 
 	if v, ok := d.GetOk("name"); ok {
 		newIntegration.Name = v.(string)
@@ -126,9 +132,12 @@ func resourceIntegrationUpdate(Ctx context.Context, d *schema.ResourceData, m in
 	teamID := d.Get("team_id").(string)
 	serviceID := d.Get("service_id").(string)
 	summary := d.Get("summary").(string)
-	if summary != "" {
-		newIntegration.Summary = summary
+	if summary == "" {
+		// the create API rejects blank summaries, but integrations exported
+		// from another instance may legitimately have one
+		summary = d.Get("name").(string)
 	}
+	newIntegration.Summary = summary
 
 	if v, ok := d.GetOk("name"); ok {
 		newIntegration.Name = v.(string)

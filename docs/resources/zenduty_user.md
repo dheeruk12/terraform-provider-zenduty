@@ -32,7 +32,7 @@ resource "zenduty_user" "demouser" {
 
 * `email` (Required) - EmailAddress of the user 
 * `first_name` (Required) - Firstname of the user
-* `last_name` (Required) - Lastname of the user
+* `last_name` (Required) - Lastname of the user. Whitespace-only values are accepted (the Zenduty API permits them); only an empty string is rejected.
 * `team` (Required, Forces new resource) - Unique id of the team to which the user is to be invited
 * `role` (Optional) - Account role of the user: `2` for admin, `3` for user. Defaults to `3`. (`1`, the account owner, cannot be assigned through the API.)
 

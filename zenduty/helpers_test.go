@@ -197,3 +197,23 @@ func TestSuppressEquivalentJSONObjectDiffs(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateNonZeroLength(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      interface{}
+		wantErr bool
+	}{
+		{"regular value", "Scott", false},
+		// the API permits whitespace-only values (e.g. user last names)
+		{"whitespace only", " ", false},
+		{"empty string", "", true},
+		{"not a string", 7, true},
+	}
+	for _, c := range cases {
+		diags := ValidateNonZeroLength()(c.in, nil)
+		if gotErr := diags.HasError(); gotErr != c.wantErr {
+			t.Errorf("%s: ValidateNonZeroLength()(%v) error = %v, want %v", c.name, c.in, gotErr, c.wantErr)
+		}
+	}
+}

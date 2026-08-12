@@ -49,7 +49,8 @@ func resourceMaintenanceWindow() *schema.Resource {
 			"repeat_interval": {
 				Type:         schema.TypeInt,
 				Optional:     true,
-				ValidateFunc: validation.IntAtLeast(1),
+				ValidateFunc: validation.IntAtLeast(0),
+				Description:  "Repeat interval of the window. 0 (the API default) means the window does not repeat.",
 			},
 			"repeat_until": {
 				Type:     schema.TypeString,

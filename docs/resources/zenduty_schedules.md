@@ -72,12 +72,12 @@ layers {
 ```
 
 ## Argument Reference
-* `name` (Required) - The name of the layer.
+* `name` (Optional) - The name of the layer. Zenduty allows unnamed layers, so this may be omitted or empty.
 * `time_zone` (Required) - The time_zone of the layer. ex: "Asia/Kolkata"
 * `rotation_end_time` (Required) - The rotation_end_time of the layer in format YYYY-MM-DD HH:MM.
 * `rotation_start_time` (Required) - The rotation_start_time of the layer in format YYYY-MM-DD HH:MM.
 * `shift_length` (Required) (Number) - The shift_length of the layer in seconds.
-* `users`(Required) -  Array of username of users
+* `users`(Required) -  Array of username of users. May be empty for a layer with no users.
 * `restriction_type` (Required)(Number) - The restriction_type of the layer. ex: `1` for day, `2` for week ,`0` for default
 * `restrictions`(Optional) - The restrictions of the layer. (see [below for nested schema](#nestedblock--restrictions))
 
@@ -155,7 +155,7 @@ overrides {
 
 ```
 ## Argument Reference
-* `name` (Required) - The name of the override.
+* `name` (Optional) - The name of the override. Zenduty allows unnamed overrides, so this may be omitted or empty.
 * `start_time` (Required) - The start_time of the override. time in YYYY-MM-DD HH:MM.
 * `end_time` (Required) - The end_time of the override. time in YYYY-MM-DD HH:MM.
 * `user` (Required) - The user of the override.

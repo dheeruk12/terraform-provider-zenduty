@@ -53,10 +53,10 @@ resource "zenduty_sla" "example_sla" {
 * `name` - (Required) The name of the sla.
 * `description`  - (Optional) The description of the sla
 * `conditions` - (Optional) SLA conditions as a JSON object string. Formatting-only differences are ignored.
-* `acknowledge_time` - (Required) time in seconds to trigger SLA if not acknowledged.
-* `resolve_time` - (Required) Time in seconds to trigger SLA if not resolved.
+* `acknowledge_time` - (Optional) time in seconds to trigger SLA if not acknowledged. `0` (the API default) disables the acknowledge target.
+* `resolve_time` - (Optional) Time in seconds to trigger SLA if not resolved. `0` (the API default) disables the resolve target.
 * `is_active` - (Optional) Whether the SLA is active. Defaults to `true`.
-* `escalations` - (Required) Reminders when an SLA is breached or about to breach. At least one is required.  (see [below for nested schema](#nestedblock--escalation))
+* `escalations` - (Optional) Reminders when an SLA is breached or about to breach. May be omitted for SLAs without escalations.  (see [below for nested schema](#nestedblock--escalation))
 
 ```hcl
 
