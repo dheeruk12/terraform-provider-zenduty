@@ -14,6 +14,9 @@ on:
   push:
     tags:
       - "v*"
+# Releases need write access to the repo contents; the org default token is read-only.
+permissions:
+  contents: write
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
