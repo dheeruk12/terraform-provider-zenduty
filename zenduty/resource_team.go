@@ -15,7 +15,7 @@ import (
 func resourceTeam() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceTeamCreate,
-		ReadContext:   wrapReadWith404(resourceTeamRead),
+		ReadContext:   resourceTeamRead,
 		UpdateContext: resourceTeamUpdate,
 		DeleteContext: resourceTeamDelete,
 		Importer: &schema.ResourceImporter{
@@ -25,6 +25,15 @@ func resourceTeam() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
+			},
+			"owner": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Username of the team owner.",
+			},
+			"creation_date": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 		},
 	}
@@ -44,24 +53,19 @@ func resourceTeamCreate(ctx context.Context, d *schema.ResourceData, m interface
 
 		task, err := apiclient.Teams.CreateTeam(newteam)
 		if err != nil {
-			return resource.RetryableError(err)
+			if isRetryableError(err) {
+				return resource.RetryableError(err)
+			}
+			return resource.NonRetryableError(err)
 		} else if task != nil {
 			d.SetId(task.UniqueID)
 		}
 		return nil
 	})
 	if retryErr != nil {
-		time.Sleep(2 * time.Second)
 		return diag.FromErr(retryErr)
 	}
 	return diags
-
-	// task, err := apiclient.Teams.CreateTeam(newteam)
-	// if err != nil {
-	// 	return diag.FromErr(err)
-	// }
-	// d.SetId(task.UniqueID)
-	// return diags
 }
 
 func resourceTeamUpdate(Ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
@@ -79,20 +83,18 @@ func resourceTeamUpdate(Ctx context.Context, d *schema.ResourceData, m interface
 
 		task, err := apiclient.Teams.UpdateTeam(id, newteam)
 		if err != nil {
-			return resource.RetryableError(err)
+			if isRetryableError(err) {
+				return resource.RetryableError(err)
+			}
+			return resource.NonRetryableError(err)
 		} else if task != nil {
 			d.SetId(task.UniqueID)
 		}
 		return nil
 	})
 	if retryErr != nil {
-		time.Sleep(2 * time.Second)
 		return diag.FromErr(retryErr)
 	}
-	// _, err := apiclient.Teams.UpdateTeam(id, newteam)
-	// if err != nil {
-	// 	return diag.FromErr(err)
-	// }
 	return diags
 
 }
@@ -117,9 +119,11 @@ func resourceTeamRead(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	t, err := apiclient.Teams.GetTeamByID(id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", t.Name)
+	d.Set("owner", t.Owner)
+	d.Set("creation_date", t.CreationDate)
 
 	return diags
 }

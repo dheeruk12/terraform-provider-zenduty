@@ -11,16 +11,18 @@ import (
 
 func dataSourceUserContacts() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceNotificationRulesRead,
+		ReadContext: dataSourceUserContactsRead,
 		Schema: map[string]*schema.Schema{
 			"user_id": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 			"contact_type": {
-				Type:         schema.TypeInt,
-				Required:     true,
-				ValidateFunc: validation.IntBetween(1, 5),
+				Type:     schema.TypeInt,
+				Required: true,
+				// backend CONTACT_TYPES: 1 email, 2 sms, 3 phone, 4 slack,
+				// 5 msteams, 6 push, 7 gchat
+				ValidateFunc: validation.IntBetween(1, 7),
 			},
 
 			"value": {
@@ -35,7 +37,7 @@ func dataSourceUserContacts() *schema.Resource {
 	}
 }
 
-func dataSourceNotificationRulesRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func dataSourceUserContactsRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 
 	apiclient, _ := m.(*Config).Client()
 	username := d.Get("user_id").(string)

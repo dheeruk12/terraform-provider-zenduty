@@ -45,9 +45,12 @@ resource "zenduty_globalrouting_rule" "supressrule" {
 ## Argument Reference
 
 * `name` (Required) - Name of the Routing Rule
-* `router_id` - UniqueID of the GlobalRouter
+* `router_id` (Required, Forces new resource) - UniqueID of the GlobalRouter
 *  `rule_json` (Required)(string) - The rule json of the routing rule.You cannot construct the rule json in terraform as of now.One can construct the rule json in Zenduty's UI.Create an dummy alert rule in Zenduty and copy the rule_json from the UI.
-* `actions` (Optional) - The actions to be performed when the rule matches.values are `0` route to integration `1` supress the alert
+* `position` (Optional)(Number) - Evaluation order of the rule within the router. Assigned by the server when omitted.
+* `actions` (Optional) - The actions to be performed when the rule matches.
+    * `action_type` (Required)(Number) - `0` route to integration, `1` suppress the alert.
+    * `integration` (Optional)(string) - UniqueID of the integration to route to. Required when `action_type` is `0`.
 
 ## Attributes Reference
 

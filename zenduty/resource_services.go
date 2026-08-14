@@ -18,7 +18,7 @@ func resourceServices() *schema.Resource {
 		CreateContext: resourceCreateServices,
 		UpdateContext: resourceUpdateServices,
 		DeleteContext: resourceDeleteServices,
-		ReadContext:   wrapReadWith404(resourceReadServices),
+		ReadContext:   resourceReadServices,
 		Importer: &schema.ResourceImporter{
 			State: resourceServiceImporter,
 		},
@@ -36,6 +36,7 @@ func resourceServices() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"description": {
@@ -47,13 +48,15 @@ func resourceServices() *schema.Resource {
 				Optional: true,
 			},
 			"collation": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				ValidateFunc: validation.IntBetween(0, 1),
-			},
-			"collation_time": {
 				Type:     schema.TypeInt,
 				Optional: true,
+				// backend SERVICE_COLLATION_TYPES: 0 off, 1 time-based, 3 content-based (2 is unused)
+				ValidateFunc: validation.IntInSlice([]int{0, 1, 3}),
+			},
+			"collation_time": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				ValidateFunc: validation.IntBetween(0, 1440),
 			},
 			"sla": {
 				Type:             schema.TypeString,
@@ -69,6 +72,30 @@ func resourceServices() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ValidateDiagFunc: ValidateUUID(),
+			},
+			"auto_resolve_timeout": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				ValidateFunc: validation.IntAtLeast(0),
+				Description:  "Seconds after which open incidents auto-resolve. 0 disables auto-resolution.",
+			},
+			"acknowledgement_timeout": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				ValidateFunc: validation.IntAtLeast(0),
+				Description:  "Seconds after which unacknowledged incidents re-trigger. 0 disables the timeout; the backend requires at least 600 seconds when enabled.",
+			},
+			"status": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"under_maintenance": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
+			"creation_date": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 		},
 	}
@@ -106,9 +133,14 @@ func CreateServices(Ctx context.Context, d *schema.ResourceData, m interface{}) 
 	if v, ok := d.GetOk("team_priority"); ok {
 		newService.TeamPriority = v.(string)
 	}
-	if newService.Collation == 1 && newService.CollationTime == 0 {
+	newService.AutoResolveTimeout = d.Get("auto_resolve_timeout").(int)
+	newService.AcknowledgmentTimeout = d.Get("acknowledgement_timeout").(int)
+	newService.AcknowledgementTimeoutEnabled = newService.AcknowledgmentTimeout > 0
+	if newService.Collation != 0 && newService.CollationTime == 0 {
 		return nil, fmt.Errorf("collation_time is required when collation is enabled")
-
+	}
+	if newService.Collation == 0 && newService.CollationTime != 0 {
+		return nil, fmt.Errorf("collation_time cannot be set without enabling collation")
 	}
 	return newService, nil
 }
@@ -186,7 +218,7 @@ func resourceReadServices(Ctx context.Context, d *schema.ResourceData, m interfa
 	var diags diag.Diagnostics
 	service, err := apiclient.Services.GetServicesByID(teamID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", service.Name)
 	d.Set("escalation_policy", service.EscalationPolicy)
@@ -198,6 +230,17 @@ func resourceReadServices(Ctx context.Context, d *schema.ResourceData, m interfa
 	d.Set("task_template", service.TaskTemplate)
 	d.Set("team_priority", service.TeamPriority)
 	d.Set("team_id", teamID)
+	d.Set("auto_resolve_timeout", service.AutoResolveTimeout)
+	// a stored timeout only counts while the enabled flag is on; report the
+	// effective value so 0 always means "disabled"
+	if service.AcknowledgementTimeoutEnabled {
+		d.Set("acknowledgement_timeout", service.AcknowledgmentTimeout)
+	} else {
+		d.Set("acknowledgement_timeout", 0)
+	}
+	d.Set("status", service.Status)
+	d.Set("under_maintenance", service.UnderMaintenance)
+	d.Set("creation_date", service.CreationDate)
 
 	return diags
 }

@@ -14,8 +14,9 @@ description: |-
 ### Optional
 
 - **id** (String) The ID of this resource.
-- **number** (String)
-- **status** (String)
+- **number** (String) Fetch a single incident by its incident number.
+- **status** (String) Filter incidents by status, applied server-side: `-1` open (triggered + acknowledged), `1` triggered, `2` acknowledged, `3` resolved.
+- **limit** (Number) Maximum number of incidents to fetch; the API pages 10 at a time and pages are fetched until the limit is reached. Defaults to `100`. `0` fetches every incident — use with care on accounts with a large incident history.
 
 ### Read-Only
 
@@ -35,13 +36,12 @@ Read-Only:
 - **creation_date** (String)
 - **escalation_policy_object_name** (String)
 - **escalation_policy_object_unique_id** (String)
-- **esccalation_policy** (String)
+- **escalation_policy** (String)
 - **incident_key** (String)
 - **incident_number** (Number)
 - **merged_with** (String)
 - **resolved_date** (String)
 - **service** (String)
-- **service_object** (String)
 - **service_object_acknowledgement_timeout** (Number)
 - **service_object_auto_resolve_timeout** (Number)
 - **service_object_collation** (Number)
@@ -59,7 +59,6 @@ Read-Only:
 - **service_object_team_priority** (String)
 - **service_object_unique_id** (String)
 - **sla** (String)
-- **sla_object** (String)
 - **status** (Number)
 - **summary** (String)
 - **team_priority** (String)

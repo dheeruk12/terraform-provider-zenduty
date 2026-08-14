@@ -16,7 +16,7 @@ func resourceOutgoingRules() *schema.Resource {
 		CreateContext: resourceCreateOutgoingRules,
 		UpdateContext: resourceUpdateOutgoingRules,
 		DeleteContext: resourceDeleteOutgoingRules,
-		ReadContext:   wrapReadWith404(resourceReadOutgoingRules),
+		ReadContext:   resourceReadOutgoingRules,
 		Importer: &schema.ResourceImporter{
 			State: resourceOutgoingRulesImporter,
 		},
@@ -24,6 +24,9 @@ func resourceOutgoingRules() *schema.Resource {
 			"rule_json": {
 				Type:     schema.TypeString,
 				Required: true,
+				// Read stores the API's compact, key-sorted JSON, so without
+				// this any human-formatted config diffs on every plan.
+				DiffSuppressFunc: suppressEquivalentJSONDiffs,
 			},
 			"enabled": {
 				Type:     schema.TypeBool,
@@ -33,16 +36,19 @@ func resourceOutgoingRules() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"service_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"integration_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 		},
@@ -124,10 +130,16 @@ func resourceReadOutgoingRules(Ctx context.Context, d *schema.ResourceData, m in
 
 	rule, err := apiclient.OutgoingRules.GetOutgoingRule(teamID, serviceID, integrationID, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(rule.UniqueID)
-	d.Set("rule_json", rule.RuleJSON)
+	// normalize like alertrules/routing rules so formatting differences in
+	// the stored JSON never show up as diffs
+	if normalizedJSON, normErr := normalizeJSON(rule.RuleJSON); normErr == nil {
+		d.Set("rule_json", normalizedJSON)
+	} else {
+		d.Set("rule_json", rule.RuleJSON)
+	}
 	d.Set("enabled", rule.Enabled)
 
 	return diags

@@ -37,7 +37,11 @@ resource "zenduty_team_permissions" "restricted" {
 
 ### Permissions
 
-Please refer to the following link for detailed documentation https://docs.zenduty.com/rbac#team-level-permissions
+Permissions are validated by the API rather than the provider, so teams can use
+permissions added to Zenduty after this provider release. Please refer to the
+following link for detailed documentation https://docs.zenduty.com/rbac#team-level-permissions
+
+The permissions available at the time of writing are:
 
 - "analytics_read",
 - "escalation_policy_attach",

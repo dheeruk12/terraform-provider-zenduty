@@ -2,7 +2,7 @@ package zenduty
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -28,7 +28,7 @@ func dataSourceServices() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Computed: true,
 						},
 						"creation_date": {
 							Type:     schema.TypeString,
@@ -60,39 +60,39 @@ func dataSourceServices() *schema.Resource {
 						},
 						"escalation_policy": {
 							Type:     schema.TypeString,
-							Required: true,
+							Computed: true,
 						},
 						"team": {
 							Type:     schema.TypeString,
-							Required: true,
+							Computed: true,
 						},
 						"description": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"summary": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"collation": {
 							Type:     schema.TypeInt,
-							Optional: true,
+							Computed: true,
 						},
 						"collation_time": {
 							Type:     schema.TypeInt,
-							Optional: true,
+							Computed: true,
 						},
 						"sla": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"task_template": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"team_priority": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -139,7 +139,7 @@ func dataSourceServicesRead(ctx context.Context, d *schema.ResourceData, m inter
 		if err := d.Set("services", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s", teamID, id))
 		return diags
 	} else {
 
@@ -173,7 +173,7 @@ func dataSourceServicesRead(ctx context.Context, d *schema.ResourceData, m inter
 		if err := d.Set("services", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s", teamID, id))
 
 		return diags
 	}

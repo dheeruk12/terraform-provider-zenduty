@@ -19,7 +19,7 @@ func resourceTaskTemplateTaskTasks() *schema.Resource {
 		CreateContext: resourceCreateTaskTemplateTaskTasks,
 		UpdateContext: resourceUpdateTaskTemplateTaskTasks,
 		DeleteContext: resourceDeleteTaskTemplateTaskTasks,
-		ReadContext:   wrapReadWith404(resourceReadTaskTemplateTaskTasks),
+		ReadContext:   resourceReadTaskTemplateTaskTasks,
 		Importer: &schema.ResourceImporter{
 			State: resourceTaskTemplateTaskTasksImporter,
 		},
@@ -27,11 +27,13 @@ func resourceTaskTemplateTaskTasks() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"task_template_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"unique_id": {
@@ -48,8 +50,9 @@ func resourceTaskTemplateTaskTasks() *schema.Resource {
 				Required: true,
 			},
 			"description": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Description of the task. Zenduty allows tasks without a description, so this may be omitted or empty.",
 			},
 			"due_in": {
 				Type:         schema.TypeInt,
@@ -91,7 +94,7 @@ func CreateTaskTemplateTask(Ctx context.Context, d *schema.ResourceData, m inter
 		newTaskTemplateTask.TaskTemplate = v.(string)
 	}
 	position := d.Get("position").(int)
-	newTaskTemplateTask.Positon = position
+	newTaskTemplateTask.Position = position
 
 	return newTaskTemplateTask, nil
 
@@ -173,15 +176,16 @@ func resourceReadTaskTemplateTaskTasks(Ctx context.Context, d *schema.ResourceDa
 	var diags diag.Diagnostics
 	tasktemplatetask, err := apiclient.TaskTemplate.GetTaskTemplateTaskByID(teamID, task_id, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
+	d.Set("unique_id", tasktemplatetask.UniqueID)
 	d.Set("title", tasktemplatetask.Title)
 	d.Set("description", tasktemplatetask.Description)
 	d.Set("creation_date", tasktemplatetask.CreationDate)
 	d.Set("team_id", teamID)
 	d.Set("role", tasktemplatetask.Role)
 	d.Set("task_template_id", tasktemplatetask.TaskTemplate)
-	d.Set("position", tasktemplatetask.Positon)
+	d.Set("position", tasktemplatetask.Position)
 	d.Set("due_in", tasktemplatetask.DueIn)
 	return diags
 }
@@ -194,10 +198,11 @@ func resourceTaskTemplateTaskTasksImporter(d *schema.ResourceData, m interface{}
 		return nil, fmt.Errorf("invalid team_id (%q)", parts[0])
 	} else if !IsValidUUID(parts[1]) {
 		return nil, fmt.Errorf("invalid task_template_id (%q)", parts[1])
-	} else if !IsValidUUID(parts[1]) {
+	} else if !IsValidUUID(parts[2]) {
 		return nil, fmt.Errorf("invalid task_id (%q)", parts[2])
 	}
 	d.Set("team_id", parts[0])
-	d.SetId(parts[1])
+	d.Set("task_template_id", parts[1])
+	d.SetId(parts[2])
 	return []*schema.ResourceData{d}, nil
 }

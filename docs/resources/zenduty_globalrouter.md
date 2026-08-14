@@ -28,7 +28,7 @@ resource "zenduty_globalrouter" "router" {
 
 * `name` (Required) - Name of the Router
 * `description`(Required) - Description of the Router
-* `is_optional` (Optional) - Enable or Disable the router 
+* `is_enabled` (Optional) - Enable or Disable the router. Defaults to `true` 
 
 ## Attributes Reference
 

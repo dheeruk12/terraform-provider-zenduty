@@ -2,7 +2,7 @@ package zenduty
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -49,7 +49,7 @@ func dataSourceTeams() *schema.Resource {
 								Schema: map[string]*schema.Schema{
 									"unique_id": {
 										Type:     schema.TypeString,
-										Required: true,
+										Computed: true,
 									},
 									"team": {
 										Type:     schema.TypeString,
@@ -138,7 +138,6 @@ func dataSourceTeamReads(ctx context.Context, d *schema.ResourceData, m interfac
 			}
 		}
 		item["roles"] = roles
-		item["roles"] = roles
 
 		members := make([]map[string]interface{}, len(team.Members))
 		for j, member := range team.Members {
@@ -161,7 +160,7 @@ func dataSourceTeamReads(ctx context.Context, d *schema.ResourceData, m interfac
 		if err := d.Set("teams", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("teams/%s", teamID))
 
 		return diags
 
@@ -179,6 +178,8 @@ func dataSourceTeamReads(ctx context.Context, d *schema.ResourceData, m interfac
 			item["unique_id"] = team.UniqueID
 			item["name"] = team.Name
 			item["owner"] = team.Owner
+			item["account"] = team.Account
+			item["creation_date"] = team.CreationDate
 			roles := make([]map[string]interface{}, len(team.Roles))
 			for j, role := range team.Roles {
 				roles[j] = map[string]interface{}{
@@ -214,7 +215,7 @@ func dataSourceTeamReads(ctx context.Context, d *schema.ResourceData, m interfac
 		if err := d.Set("teams", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("teams/%s", teamID))
 
 		return diags
 	}

@@ -20,10 +20,11 @@ func resourceSchedules() *schema.Resource {
 		CreateContext: resourceCreateSchedule,
 		UpdateContext: resourceUpdateSchedule,
 		DeleteContext: resourceDeleteSchedule,
-		ReadContext:   wrapReadWith404(resourceReadSchedule),
+		ReadContext:   resourceReadSchedule,
 		Importer: &schema.ResourceImporter{
 			State: resourceScheduleImporter,
 		},
+		CustomizeDiff: validateScheduleRestrictions,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -45,6 +46,7 @@ func resourceSchedules() *schema.Resource {
 			"team_id": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"layers": &schema.Schema{
 				Type:     schema.TypeList,
@@ -52,8 +54,9 @@ func resourceSchedules() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Name of the layer. Zenduty allows unnamed layers, so this may be omitted or empty.",
 						},
 						"shift_length": {
 							Type:         schema.TypeInt,
@@ -69,9 +72,9 @@ func resourceSchedules() *schema.Resource {
 							Optional: true,
 						},
 						"users": {
-							Type:     schema.TypeList,
-							Required: true,
-							MinItems: 1,
+							Type:        schema.TypeList,
+							Required:    true,
+							Description: "Usernames rotating through the layer. Zenduty allows layers with no users, so the list may be empty.",
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -101,6 +104,11 @@ func resourceSchedules() *schema.Resource {
 										Type:         schema.TypeString,
 										Required:     true,
 										ValidateFunc: validation.StringMatch(regexp.MustCompile(`^([0-9]|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]):([0-9]|[0-5][0-9])$`), "must be in the format HH:MM:SS"),
+										// the API stores zero-padded times; accept 9:5:0 in
+										// config without diffing against 09:05:00
+										DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+											return padTimeOfDay(old) == padTimeOfDay(new)
+										},
 									},
 								},
 							},
@@ -114,8 +122,9 @@ func resourceSchedules() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Name of the override. Zenduty allows unnamed overrides, so this may be omitted or empty.",
 						},
 						"start_time": {
 							Type:     schema.TypeString,
@@ -126,15 +135,63 @@ func resourceSchedules() *schema.Resource {
 							Required: true,
 						},
 						"user": {
-							Type:         schema.TypeString,
-							Required:     true,
-							ValidateFunc: validation.StringMatch(regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{1}$`), "must be a valid user id"),
+							Type:             schema.TypeString,
+							Required:         true,
+							ValidateDiagFunc: ValidateUserName(),
 						},
 					},
 				},
 			},
 		},
 	}
+}
+
+// validateScheduleRestrictions enforces the cross-field restriction rules at
+// plan time: restrictions require a restriction_type, and a restriction may
+// not span more than one period of its type.
+func validateScheduleRestrictions(ctx context.Context, diff *schema.ResourceDiff, m interface{}) error {
+	// Values interpolated from resources that have not been created yet read
+	// as their zero value here, which would report a bogus error. Leave those
+	// to the apply-time checks.
+	if !diff.NewValueKnown("layers") {
+		return nil
+	}
+	layers, _ := diff.Get("layers").([]interface{})
+	for i, layer := range layers {
+		layerMap, ok := layer.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		restrictionType, _ := layerMap["restriction_type"].(int)
+		restrictions, _ := layerMap["restrictions"].([]interface{})
+		if len(restrictions) > 0 && restrictionType == 0 {
+			return fmt.Errorf("layers[%d]: restriction_type must be 1 (daily) or 2 (weekly) when restrictions are set", i)
+		}
+		for j, restriction := range restrictions {
+			restrictionMap, ok := restriction.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			duration, _ := restrictionMap["duration"].(int)
+			if restrictionType == 1 && duration >= 86400 {
+				return fmt.Errorf("layers[%d].restrictions[%d]: duration must be less than 86400 seconds (24 hours) for daily restrictions", i, j)
+			}
+			if restrictionType == 2 && duration >= 604800 {
+				return fmt.Errorf("layers[%d].restrictions[%d]: duration must be less than 604800 seconds (7 days) for weekly restrictions", i, j)
+			}
+		}
+	}
+	return nil
+}
+
+// padTimeOfDay normalizes H:M:S to a zero-padded HH:MM:SS; values that do not
+// parse are returned unchanged.
+func padTimeOfDay(s string) string {
+	t, err := time.Parse("15:4:5", s)
+	if err != nil {
+		return s
+	}
+	return t.Format("15:04:05")
 }
 
 func buildScheduleLayerRescrition(newLayer *client.CreateLayers, layerMap map[string]interface{}, d *schema.ResourceData) ([]client.Restrictions, diag.Diagnostics) {
@@ -147,7 +204,7 @@ func buildScheduleLayerRescrition(newLayer *client.CreateLayers, layerMap map[st
 		Restrictions := make([]client.Restrictions, len(restrictions))
 		for j, restriction := range restrictions {
 			if newLayer.RestrictionType == 0 {
-				return nil, diag.FromErr(errors.New("restrictions must be set to add restrictions.. ie daily(1) or weekly(2)"))
+				return nil, diag.FromErr(errors.New("restriction_type must be 1 (daily) or 2 (weekly) when restrictions are set"))
 			}
 			restrictionMap := restriction.(map[string]interface{})
 			newRestriction := client.Restrictions{}
@@ -160,16 +217,10 @@ func buildScheduleLayerRescrition(newLayer *client.CreateLayers, layerMap map[st
 				}
 			}
 			if v, ok := restrictionMap["start_day_of_week"]; ok {
-
-				if newLayer.RestrictionType == 1 {
-					newRestriction.StartDayOfWeek = 7
-				} else {
-					newRestriction.StartDayOfWeek = v.(int)
-				}
-
+				newRestriction.StartDayOfWeek = v.(int)
 			}
 			if v, ok := restrictionMap["start_time_of_day"]; ok {
-				newRestriction.StartTimeOfDay = v.(string)
+				newRestriction.StartTimeOfDay = padTimeOfDay(v.(string))
 			}
 
 			Restrictions[j] = newRestriction
@@ -188,10 +239,8 @@ func buildScheduleLayer(ctx context.Context, d *schema.ResourceData, TimeZone st
 		newLayer := client.CreateLayers{}
 
 		if v, ok := layerMap["name"]; ok {
-			if v.(string) == "" {
-				return nil, diag.FromErr(errors.New("name must not be empty"))
-			}
-
+			// The API permits unnamed layers (reads return name: "" for
+			// them), so an empty name is passed through as-is.
 			newLayer.Name = v.(string)
 		}
 		// if v, ok := layerMap["time_zone"]; ok {
@@ -408,7 +457,7 @@ func resourceReadSchedule(Ctx context.Context, d *schema.ResourceData, m interfa
 	var diags diag.Diagnostics
 	service, err := apiclient.Schedules.GetScheduleByID(teamID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", service.Name)
 	d.Set("summary", service.Summary)
@@ -428,10 +477,7 @@ func resourceReadSchedule(Ctx context.Context, d *schema.ResourceData, m interfa
 func flattenLayer(TimeZone string, layers []client.Layers) []map[string]interface{} {
 
 	var layerList []map[string]interface{}
-	for i, layer := range layers {
-		if emptyString(layer.Name) {
-			layer.Name = fmt.Sprintf("Layer-%d", i+1)
-		}
+	for _, layer := range layers {
 		layerList = append(layerList, map[string]interface{}{
 			"name":                layer.Name,
 			"shift_length":        layer.ShiftLength,
@@ -475,9 +521,6 @@ func flattenLayerRestrictions(restrictions []client.Restrictions) []map[string]i
 
 	var restrictionList []map[string]interface{}
 	for _, restriction := range restrictions {
-		if restriction.Duration == 0 {
-			restriction.Duration = 1
-		}
 		restrictionList = append(restrictionList, map[string]interface{}{
 			"duration":          restriction.Duration,
 			"start_day_of_week": restriction.StartDayOfWeek,
@@ -491,10 +534,7 @@ func flattenLayerRestrictions(restrictions []client.Restrictions) []map[string]i
 func flattenScheduleOverrides(TimeZone string, overrides []client.Overrides) []map[string]interface{} {
 
 	var overrideList []map[string]interface{}
-	for i, override := range overrides {
-		if emptyString(override.Name) {
-			override.Name = fmt.Sprintf("Override-%d", i+1)
-		}
+	for _, override := range overrides {
 		overrideList = append(overrideList, map[string]interface{}{
 			"name":       override.Name,
 			"start_time": createScheduleLayerTimeFormat(override.StartTime, TimeZone),

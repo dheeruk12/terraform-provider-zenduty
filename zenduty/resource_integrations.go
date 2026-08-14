@@ -19,7 +19,7 @@ func resourceIntegrations() *schema.Resource {
 		CreateContext: resourceIntegrationCreate,
 		UpdateContext: resourceIntegrationUpdate,
 		DeleteContext: resourceIntegrationDelete,
-		ReadContext:   wrapReadWith404(resourceIntegrationRead),
+		ReadContext:   resourceIntegrationRead,
 		Importer: &schema.ResourceImporter{
 			State: resourceIntegrationImporter,
 		},
@@ -27,16 +27,19 @@ func resourceIntegrations() *schema.Resource {
 			"application": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"service_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"name": {
@@ -45,15 +48,20 @@ func resourceIntegrations() *schema.Resource {
 			},
 			"summary": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				Computed: true,
+				Description: "Summary of the integration. The API rejects blank summaries on create," +
+					" so when omitted the integration's name is used.",
 			},
 			"integration_key": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"webhook_url": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"is_enabled": {
 				Type:     schema.TypeBool,
@@ -61,8 +69,9 @@ func resourceIntegrations() *schema.Resource {
 				Default:  true,
 			},
 			"create_incident_for": {
-				Type:         schema.TypeInt,
-				Optional:     true,
+				Type:     schema.TypeInt,
+				Optional: true,
+				// 0 none, 1 critical, 2 critical+error, 3 critical+error+warning
 				ValidateFunc: validation.IntBetween(0, 3),
 				Default:      1,
 			},
@@ -84,9 +93,12 @@ func resourceIntegrationCreate(ctx context.Context, d *schema.ResourceData, m in
 	teamID := d.Get("team_id").(string)
 	serviceID := d.Get("service_id").(string)
 	summary := d.Get("summary").(string)
-	if summary != "" {
-		newIntegration.Summary = summary
+	if summary == "" {
+		// the create API rejects blank summaries, but integrations exported
+		// from another instance may legitimately have one
+		summary = d.Get("name").(string)
 	}
+	newIntegration.Summary = summary
 
 	if v, ok := d.GetOk("name"); ok {
 		newIntegration.Name = v.(string)
@@ -94,15 +106,9 @@ func resourceIntegrationCreate(ctx context.Context, d *schema.ResourceData, m in
 	if v, ok := d.GetOk("application"); ok {
 		newIntegration.Application = v.(string)
 	}
-	if v, ok := d.GetOk("is_enabled"); ok {
-		newIntegration.IsEnabled = v.(bool)
-	}
-	if v, ok := d.GetOk("create_incident_for"); ok {
-		newIntegration.CreateIncidentFor = v.(int)
-	}
-	if v, ok := d.GetOk("default_urgency"); ok {
-		newIntegration.DefaultUrgency = v.(int)
-	}
+	newIntegration.IsEnabled = d.Get("is_enabled").(bool)
+	newIntegration.CreateIncidentFor = d.Get("create_incident_for").(int)
+	newIntegration.DefaultUrgency = d.Get("default_urgency").(int)
 
 	integration, err := apiclient.Integrations.CreateIntegration(teamID, serviceID, newIntegration)
 	if err != nil {
@@ -126,9 +132,12 @@ func resourceIntegrationUpdate(Ctx context.Context, d *schema.ResourceData, m in
 	teamID := d.Get("team_id").(string)
 	serviceID := d.Get("service_id").(string)
 	summary := d.Get("summary").(string)
-	if summary != "" {
-		newIntegration.Summary = summary
+	if summary == "" {
+		// the create API rejects blank summaries, but integrations exported
+		// from another instance may legitimately have one
+		summary = d.Get("name").(string)
 	}
+	newIntegration.Summary = summary
 
 	if v, ok := d.GetOk("name"); ok {
 		newIntegration.Name = v.(string)
@@ -136,15 +145,9 @@ func resourceIntegrationUpdate(Ctx context.Context, d *schema.ResourceData, m in
 	if v, ok := d.GetOk("application"); ok {
 		newIntegration.Application = v.(string)
 	}
-	if v, ok := d.GetOk("is_enabled"); ok {
-		newIntegration.IsEnabled = v.(bool)
-	}
-	if v, ok := d.GetOk("create_incident_for"); ok {
-		newIntegration.CreateIncidentFor = v.(int)
-	}
-	if v, ok := d.GetOk("default_urgency"); ok {
-		newIntegration.DefaultUrgency = v.(int)
-	}
+	newIntegration.IsEnabled = d.Get("is_enabled").(bool)
+	newIntegration.CreateIncidentFor = d.Get("create_incident_for").(int)
+	newIntegration.DefaultUrgency = d.Get("default_urgency").(int)
 
 	integration, err := apiclient.Integrations.UpdateIntegration(teamID, serviceID, id, newIntegration)
 	if err != nil {
@@ -189,7 +192,7 @@ func resourceIntegrationRead(ctx context.Context, d *schema.ResourceData, m inte
 
 	integration, err := apiclient.Integrations.GetIntegrationByID(teamID, serviceID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", integration.Name)
 	d.Set("application", integration.Application)

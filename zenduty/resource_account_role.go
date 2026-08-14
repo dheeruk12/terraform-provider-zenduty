@@ -3,7 +3,6 @@ package zenduty
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
 
@@ -15,7 +14,7 @@ import (
 func resourceAccountRole() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCreateAccountRole,
-		ReadContext:   wrapReadWith404(resourceReadAccountRole),
+		ReadContext:   resourceReadAccountRole,
 		UpdateContext: resourceUpdateAccountRole,
 		DeleteContext: resourceDeleteAccountRole,
 		Importer: &schema.ResourceImporter{
@@ -31,64 +30,31 @@ func resourceAccountRole() *schema.Resource {
 				Required: true,
 			},
 			"permissions": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Required: true,
 				MinItems: 1,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "Permissions for the role. The API automatically adds the read permissions implied by the ones you list (e.g. incident_read pulls in team_read, service_read, ...); list the full stored set to avoid plan diffs.",
 			},
 		},
 	}
 }
 
 func validateAccountRoles(Ctx context.Context, d *schema.ResourceData, m interface{}) (*client.AccountRole, diag.Diagnostics) {
-	permissionsList := []string{
-		"analytics_read",
-		"escalation_policy_read",
-		"escalation_policy_write",
-		"incident_read",
-		"incident_write",
-		"incident_role_read",
-		"incident_role_write",
-		"integration_read",
-		"integration_write",
-		"maintenance_read",
-		"maintenance_write",
-		"member_read",
-		"member_write",
-		"postmortem_read",
-		"postmortem_write",
-		"priority_read",
-		"priority_write",
-		"schedule_read",
-		"schedule_write",
-		"service_read",
-		"service_write",
-		"sla_read",
-		"sla_write",
-		"stakeholder_template_read",
-		"stakeholder_template_write",
-		"tag_read",
-		"tag_write",
-		"task_template_read",
-		"task_template_write",
-		"team_read",
-	}
-
 	name := d.Get("name").(string)
 	description := d.Get("description").(string)
-	permissions := d.Get("permissions").([]interface{})
+	permissions := d.Get("permissions").(*schema.Set).List()
 	newRole := &client.AccountRole{}
 
 	newRole.Name = name
 	newRole.Description = description
+	// The permission catalogue grows server-side and there is no endpoint to
+	// fetch it, so unknown values are left to the API to reject.
 	for _, permission := range permissions {
 		if permission.(string) == "" {
 			return nil, diag.FromErr(errors.New("permission must not be empty"))
-		}
-		if !checkList(permission.(string), permissionsList) {
-			return nil, diag.FromErr(fmt.Errorf("invalid permission received %s", permission.(string)))
 		}
 		newRole.Permissions = append(newRole.Permissions, permission.(string))
 	}
@@ -138,7 +104,7 @@ func resourceReadAccountRole(ctx context.Context, d *schema.ResourceData, m inte
 	apiclient, _ := m.(*Config).Client()
 	role, err := apiclient.AccountRole.GetAccountRoleByID(d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(role.UniqueID)
 	d.Set("name", role.Name)

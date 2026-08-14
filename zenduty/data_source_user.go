@@ -3,7 +3,6 @@ package zenduty
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -78,7 +77,7 @@ func dataSourceUserReads(ctx context.Context, d *schema.ResourceData, m interfac
 	if err := d.Set("users", items); err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(time.Now().String())
+	d.SetId(email)
 
 	return diags
 }

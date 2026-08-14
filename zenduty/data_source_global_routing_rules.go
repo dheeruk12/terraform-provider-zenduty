@@ -2,7 +2,7 @@ package zenduty
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -103,7 +103,7 @@ func dataSourceGlobalRoutingRulesRead(ctx context.Context, d *schema.ResourceDat
 		if err := d.Set("routing_rules", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s", routerID, ruleID))
 
 		return diags
 	} else {
@@ -139,7 +139,7 @@ func dataSourceGlobalRoutingRulesRead(ctx context.Context, d *schema.ResourceDat
 			return diag.FromErr(err)
 		}
 
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s", routerID, ruleID))
 		return diags
 	}
 }

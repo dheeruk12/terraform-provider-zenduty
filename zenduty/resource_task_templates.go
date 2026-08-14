@@ -18,7 +18,7 @@ func resourceTaskTemplates() *schema.Resource {
 		CreateContext: resourceCreateTaskTemplates,
 		UpdateContext: resourceUpdateTaskTemplates,
 		DeleteContext: resourceDeleteTaskTemplates,
-		ReadContext:   wrapReadWith404(resourceReadTaskTemplates),
+		ReadContext:   resourceReadTaskTemplates,
 		Importer: &schema.ResourceImporter{
 			State: resourceTaskTemplatesImporter,
 		},
@@ -26,6 +26,7 @@ func resourceTaskTemplates() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"unique_id": {
@@ -37,8 +38,9 @@ func resourceTaskTemplates() *schema.Resource {
 				Required: true,
 			},
 			"summary": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Summary of the template. Zenduty allows templates without a summary, so this may be omitted or empty.",
 			},
 			"creation_date": {
 				Type:     schema.TypeString,
@@ -141,12 +143,13 @@ func resourceReadTaskTemplates(Ctx context.Context, d *schema.ResourceData, m in
 	var diags diag.Diagnostics
 	postincidenttask, err := apiclient.TaskTemplate.GetTaskTemplateByID(teamID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", postincidenttask.Name)
 	d.Set("summary", postincidenttask.Summary)
 	d.Set("creation_date", postincidenttask.CreationDate)
 	d.Set("team_id", teamID)
+	d.Set("unique_id", postincidenttask.UniqueID)
 
 	return diags
 }

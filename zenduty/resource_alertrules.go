@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func resourceAlertRules() *schema.Resource {
@@ -17,7 +19,7 @@ func resourceAlertRules() *schema.Resource {
 		CreateContext: resourceCreateAlertRules,
 		UpdateContext: resourceUpdateAlertRules,
 		DeleteContext: resourceDeleteAlertRules,
-		ReadContext:   wrapReadWith404(resourceReadAlertRules),
+		ReadContext:   resourceReadAlertRules,
 		Importer: &schema.ResourceImporter{
 			State: resourceAlertRulesImporter,
 		},
@@ -29,31 +31,92 @@ func resourceAlertRules() *schema.Resource {
 			"rule_json": {
 				Type:     schema.TypeString,
 				Optional: true,
+				// Read stores the API's compact, key-sorted JSON, so without
+				// this any human-formatted config diffs on every plan.
+				DiffSuppressFunc: suppressEquivalentJSONDiffs,
 			},
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"service_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"integration_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 
+			"stop": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Stop processing further alert rules when this rule matches.",
+			},
+			"rule_type": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				Computed:     true,
+				ValidateFunc: validation.IntBetween(0, 1),
+				Description:  "0 requires all conditions to match, 1 requires any condition to match.",
+			},
+			"position": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+			"conditions": {
+				Type:     schema.TypeList,
+				Optional: true,
+				// Computed so that a config without conditions blocks preserves
+				// whatever conditions exist server-side (e.g. created in the
+				// UI) instead of planning their removal. The API full-replaces
+				// conditions on every update, so update sends the state value
+				// back when the config doesn't manage them.
+				Computed:    true,
+				Description: "Structured conditions evaluated against incoming alerts. Order matters: the API assigns each condition's position from its place in the list. When omitted, existing conditions are preserved. Most configurations express matching via rule_json instead; the API stores the two independently.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"alert_condition_type": {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Default:      1,
+							ValidateFunc: validation.IntAtLeast(1),
+							Description:  "1 matches the alert type, 2 matches a payload field. New types may appear server-side; only the lower bound is enforced here.",
+						},
+						"alert_field": {
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "The field the condition inspects: the alert attribute for type 1, the payload field name for type 2.",
+						},
+						"pattern": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The pattern the field is matched against.",
+						},
+						"unique_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
 			"actions": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"action_type": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:         schema.TypeInt,
+							Required:     true,
+							ValidateFunc: validation.IntAtLeast(1),
 						},
 						"key": {
 							Type:     schema.TypeString,
@@ -63,98 +126,160 @@ func resourceAlertRules() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						"escalation_policy": {
+							Type:             schema.TypeString,
+							Optional:         true,
+							ValidateDiagFunc: ValidateUUID(),
+							Description:      "Escalation policy to assign (action_type 4). Alternative to value.",
+						},
+						"schedule": {
+							Type:             schema.TypeString,
+							Optional:         true,
+							ValidateDiagFunc: ValidateUUID(),
+							Description:      "Schedule to assign (action_type 5). Alternative to value.",
+						},
+						"sla": {
+							Type:             schema.TypeString,
+							Optional:         true,
+							ValidateDiagFunc: ValidateUUID(),
+							Description:      "SLA to assign (action_type 14). Alternative to value.",
+						},
+						"team_priority": {
+							Type:             schema.TypeString,
+							Optional:         true,
+							ValidateDiagFunc: ValidateUUID(),
+							Description:      "Team priority to assign (action_type 15). Alternative to value.",
+						},
+						"task_template": {
+							Type:             schema.TypeString,
+							Optional:         true,
+							ValidateDiagFunc: ValidateUUID(),
+							Description:      "Task template to assign (action_type 16). Alternative to value.",
+						},
+						"assign_to": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "User to assign (action_type 6). Alternative to value.",
+						},
 					},
 				},
 			},
 		},
 	}
 }
+
+// actionTypeAttr maps action types that reference another Zenduty object to
+// the dedicated schema attribute for that object. These types accept either
+// the dedicated attribute or the legacy overloaded "value" attribute.
+var actionTypeAttr = map[int]string{
+	4:  "escalation_policy",
+	5:  "schedule",
+	6:  "assign_to",
+	14: "sla",
+	15: "team_priority",
+	16: "task_template",
+}
+
+// actionTypesWithoutValue take no payload at all.
+var actionTypesWithoutValue = map[int]bool{
+	3:  true, // suppress alert
+	18: true, // change entity id hash
+}
+
 func AlertRuleAction(Ctx context.Context, d *schema.ResourceData, m interface{}, newAlertRule *client.AlertRule) ([]client.AlertAction, diag.Diagnostics) {
 	actions := d.Get("actions").([]interface{})
 	newAlertRule.Actions = make([]client.AlertAction, len(actions))
 	for i, action := range actions {
 		ruleMap := action.(map[string]interface{})
 		newAction := client.AlertAction{}
-		var value, key string
 
 		if v, ok := ruleMap["action_type"]; ok {
 			newAction.ActionType = v.(int)
 		}
-
-		if (newAction.ActionType > 18) || (newAction.ActionType < 1) {
+		// New action types appear server-side over time; only the lower bound
+		// is enforced here and unknown types pass through via "value".
+		if newAction.ActionType < 1 {
 			return nil, diag.FromErr(errors.New("action_type is not valid"))
 		}
 
-		if v, ok := ruleMap["value"]; ok {
-			value = v.(string)
-		}
+		value, _ := ruleMap["value"].(string)
 
-		if ((newAction.ActionType != 3) && (newAction.ActionType != 18)) && (value == "") {
-			return nil, diag.FromErr(errors.New("value is required"))
-		}
-		if ((newAction.ActionType == 4) || (newAction.ActionType == 14) || (newAction.ActionType == 15) || (newAction.ActionType == 16)) && (!IsValidUUID(value)) {
-			return nil, diag.FromErr(errors.New(value + " is not a valid UUID"))
-		}
-
-		if (newAction.ActionType == 7) && (!(value == "0" || value == "1")) {
-			return nil, diag.FromErr(errors.New("incident urgency should be 0 or 1"))
-		}
-		if newAction.ActionType == 1 {
-			i, err := strconv.Atoi(value)
-			if i < 0 || i > 5 {
-				return nil, diag.FromErr(errors.New("value should be between 0 and 5"))
+		// Resolve the effective value: the type-specific attribute wins, the
+		// legacy "value" attribute is kept for backwards compatibility.
+		if attr, hasAttr := actionTypeAttr[newAction.ActionType]; hasAttr {
+			attrValue, _ := ruleMap[attr].(string)
+			if attrValue != "" && value != "" {
+				return nil, diag.FromErr(fmt.Errorf("action %d: %s and value are mutually exclusive", i, attr))
 			}
+			if attrValue != "" {
+				value = attrValue
+			}
+		}
+
+		if !actionTypesWithoutValue[newAction.ActionType] && value == "" {
+			attr := actionTypeAttr[newAction.ActionType]
+			if attr != "" {
+				return nil, diag.FromErr(fmt.Errorf("action %d: %s (or value) is required", i, attr))
+			}
+			return nil, diag.FromErr(fmt.Errorf("action %d: value is required", i))
+		}
+
+		switch newAction.ActionType {
+		case 1: // change alert type
+			n, err := strconv.Atoi(value)
 			if err != nil {
-				return nil, diag.FromErr(errors.New("value is not valid"))
+				return nil, diag.FromErr(fmt.Errorf("action %d: value %q is not a number", i, value))
+			}
+			if n < 0 || n > 5 {
+				return nil, diag.FromErr(fmt.Errorf("action %d: value should be between 0 and 5", i))
 			}
 			newAction.Value = value
-		} else if newAction.ActionType == 3 {
-			value = ""
-		} else if newAction.ActionType == 4 {
-			newAction.EscalationPolicy = value
-			value = ""
-		} else if newAction.ActionType == 6 {
-
-			newAction.AssignedTo = value
-			value = ""
-		} else if newAction.ActionType == 11 {
-			if v, ok := ruleMap["key"]; ok {
-				key = v.(string)
+		case 3, 18: // no payload
+		case 4: // assign escalation policy
+			if !IsValidUUID(value) {
+				return nil, diag.FromErr(fmt.Errorf("action %d: escalation_policy %q is not a valid UUID", i, value))
 			}
+			newAction.EscalationPolicy = value
+		case 5: // assign schedule
+			if !IsValidUUID(value) {
+				return nil, diag.FromErr(fmt.Errorf("action %d: schedule %q is not a valid UUID", i, value))
+			}
+			newAction.Schedule = value
+		case 6: // assign user
+			newAction.AssignedTo = value
+		case 7: // change urgency
+			if value != "0" && value != "1" {
+				return nil, diag.FromErr(fmt.Errorf("action %d: incident urgency should be 0 or 1", i))
+			}
+			newAction.Value = value
+		case 11: // assign incident role to user
+			key, _ := ruleMap["key"].(string)
 			if key == "" {
-				return nil, diag.FromErr(errors.New("key(ie..role_id) is required"))
+				return nil, diag.FromErr(fmt.Errorf("action %d: key (the role id) is required", i))
 			}
 			if !IsValidUUID(key) {
-				return nil, diag.FromErr(errors.New("key(ie..role_id) is not valid UUID"))
+				return nil, diag.FromErr(fmt.Errorf("action %d: key (the role id) is not a valid UUID", i))
 			}
-
 			newAction.Key = key
-
-		} else if newAction.ActionType == 14 {
+			newAction.Value = value
+		case 14: // assign SLA
+			if !IsValidUUID(value) {
+				return nil, diag.FromErr(fmt.Errorf("action %d: sla %q is not a valid UUID", i, value))
+			}
 			newAction.SLA = value
-			value = ""
-			if newAction.SLA == "" {
-				return nil, diag.FromErr(errors.New("sla is required"))
-			} else if !IsValidUUID(newAction.SLA) {
-				return nil, diag.FromErr(errors.New("sla is not valid UUID"))
+		case 15: // assign team priority
+			if !IsValidUUID(value) {
+				return nil, diag.FromErr(fmt.Errorf("action %d: team_priority %q is not a valid UUID", i, value))
 			}
-
-		} else if newAction.ActionType == 15 {
 			newAction.TeamPriority = value
-			value = ""
-			if newAction.TeamPriority == "" {
-				return nil, diag.FromErr(errors.New("team_priority is required"))
-			} else if !IsValidUUID(newAction.TeamPriority) {
-				return nil, diag.FromErr(errors.New("team_priority is not valid UUID"))
+		case 16: // assign task template
+			if !IsValidUUID(value) {
+				return nil, diag.FromErr(fmt.Errorf("action %d: task_template %q is not a valid UUID", i, value))
 			}
-		} else if newAction.ActionType == 16 {
 			newAction.TaskTemplates = value
-			value = ""
-		} else if newAction.ActionType == 18 {
-			value = ""
+		default:
+			newAction.Value = value
 		}
-
-		newAction.Value = value
 
 		newAlertRule.Actions[i] = newAction
 
@@ -183,6 +308,10 @@ func ValidateAncCreateAlertRules(Ctx context.Context, d *schema.ResourceData, m 
 	if !isJSONString(newAlertRule.RuleJSON) {
 		return nil, diag.FromErr(errors.New("rule_json is not valid JSON"))
 	}
+	newAlertRule.Stop = d.Get("stop").(bool)
+	newAlertRule.RuleType = d.Get("rule_type").(int)
+	newAlertRule.Position = d.Get("position").(int)
+	newAlertRule.Conditions = expandAlertRuleConditions(d.Get("conditions").([]interface{}))
 	actions, actionErr := AlertRuleAction(Ctx, d, m, newAlertRule)
 	if actionErr != nil {
 		return nil, actionErr
@@ -249,7 +378,7 @@ func resourceReadAlertRules(Ctx context.Context, d *schema.ResourceData, m inter
 
 	rule, err := apiclient.AlertRules.GetAlertRule(teamID, serviceID, integrationID, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(rule.UniqueID)
 	// Normalize JSON before setting to avoid formatting issues
@@ -265,30 +394,85 @@ func resourceReadAlertRules(Ctx context.Context, d *schema.ResourceData, m inter
 		d.Set("rule_json", rule.RuleJSON)
 	}
 
-	d.Set("actions", flattenAlertActions(rule))
+	d.Set("actions", flattenAlertActions(rule, d.Get("actions").([]interface{})))
+	d.Set("conditions", flattenAlertRuleConditions(rule.Conditions))
 	d.Set("description", rule.Description)
+	d.Set("stop", rule.Stop)
+	d.Set("rule_type", rule.RuleType)
+	d.Set("position", rule.Position)
 
 	return diags
 }
-func flattenAlertActions(rule *client.AlertRule) []map[string]interface{} {
+
+// expandAlertRuleConditions maps config conditions to the API shape. Position
+// is derived from list order because the API reassigns 1..N from payload
+// order on every update.
+func expandAlertRuleConditions(conditions []interface{}) []client.AlertRuleCondition {
+	expanded := make([]client.AlertRuleCondition, len(conditions))
+	for i, condition := range conditions {
+		conditionMap := condition.(map[string]interface{})
+		expanded[i] = client.AlertRuleCondition{
+			AlertConditionType: conditionMap["alert_condition_type"].(int),
+			AlertField:         conditionMap["alert_field"].(string),
+			Pattern:            conditionMap["pattern"].(string),
+			Position:           i + 1,
+		}
+	}
+	return expanded
+}
+
+// flattenAlertRuleConditions maps API conditions back to state in position
+// order, which is the order the config list was written in.
+func flattenAlertRuleConditions(conditions []client.AlertRuleCondition) []map[string]interface{} {
+	flattened := make([]map[string]interface{}, len(conditions))
+	sorted := append([]client.AlertRuleCondition(nil), conditions...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Position < sorted[j].Position })
+	for i, condition := range sorted {
+		flattened[i] = map[string]interface{}{
+			"alert_condition_type": condition.AlertConditionType,
+			"alert_field":          condition.AlertField,
+			"pattern":              condition.Pattern,
+			"unique_id":            condition.UniqueID,
+		}
+	}
+	return flattened
+}
+
+// flattenAlertActions maps API actions back to state. For action types that
+// accept either the dedicated attribute or the legacy "value" attribute, the
+// API value is written into whichever shape the existing state (i.e. the
+// config) used, so switching representations never produces a phantom diff.
+func flattenAlertActions(rule *client.AlertRule, prior []interface{}) []map[string]interface{} {
 	var actionsList []map[string]interface{}
-	for _, action := range rule.Actions {
+	for i, action := range rule.Actions {
 		newAction := map[string]interface{}{}
 		newAction["action_type"] = action.ActionType
-		if action.ActionType != 3 {
-			if action.ActionType == 4 {
-				newAction["value"] = action.EscalationPolicy
-			} else if action.ActionType == 6 {
-				newAction["value"] = action.AssignedTo
-			} else if action.ActionType == 14 {
-				newAction["value"] = action.SLA
-			} else if action.ActionType == 15 {
-				newAction["value"] = action.TeamPriority
-			} else if action.ActionType == 16 {
-				newAction["value"] = action.TaskTemplates
-			} else {
-				newAction["value"] = action.Value
-			}
+
+		var apiValue string
+		switch action.ActionType {
+		case 4:
+			apiValue = action.EscalationPolicy
+		case 5:
+			apiValue = action.Schedule
+		case 6:
+			apiValue = action.AssignedTo
+		case 14:
+			apiValue = action.SLA
+		case 15:
+			apiValue = action.TeamPriority
+		case 16:
+			apiValue = action.TaskTemplates
+		case 3, 18:
+			apiValue = ""
+		default:
+			apiValue = action.Value
+		}
+
+		attr := actionTypeAttr[action.ActionType]
+		if attr != "" && priorActionUsedAttr(prior, i, attr) {
+			newAction[attr] = apiValue
+		} else if action.ActionType != 3 && action.ActionType != 18 {
+			newAction["value"] = apiValue
 		}
 		if action.ActionType == 11 {
 			newAction["key"] = action.Key
@@ -296,6 +480,20 @@ func flattenAlertActions(rule *client.AlertRule) []map[string]interface{} {
 		actionsList = append(actionsList, newAction)
 	}
 	return actionsList
+}
+
+// priorActionUsedAttr reports whether the action at index i in the prior
+// state carried a non-empty value for the given attribute.
+func priorActionUsedAttr(prior []interface{}, i int, attr string) bool {
+	if i >= len(prior) {
+		return false
+	}
+	m, ok := prior[i].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	v, _ := m[attr].(string)
+	return v != ""
 }
 
 func resourceDeleteAlertRules(Ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {

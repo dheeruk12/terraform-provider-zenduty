@@ -72,12 +72,12 @@ layers {
 ```
 
 ## Argument Reference
-* `name` (Required) - The name of the layer.
+* `name` (Optional) - The name of the layer. Zenduty allows unnamed layers, so this may be omitted or empty.
 * `time_zone` (Required) - The time_zone of the layer. ex: "Asia/Kolkata"
 * `rotation_end_time` (Required) - The rotation_end_time of the layer in format YYYY-MM-DD HH:MM.
 * `rotation_start_time` (Required) - The rotation_start_time of the layer in format YYYY-MM-DD HH:MM.
 * `shift_length` (Required) (Number) - The shift_length of the layer in seconds.
-* `users`(Required) -  Array of username of users
+* `users`(Required) -  Array of username of users. May be empty for a layer with no users.
 * `restriction_type` (Required)(Number) - The restriction_type of the layer. ex: `1` for day, `2` for week ,`0` for default
 * `restrictions`(Optional) - The restrictions of the layer. (see [below for nested schema](#nestedblock--restrictions))
 
@@ -95,9 +95,9 @@ restrictions {
 ```
 
 ## Argument Reference
-* `start_time_of_day` (Required) - The start_time_of_day of the restriction. time in HH:MM:SS format.
+* `start_time_of_day` (Required) - The start_time_of_day of the restriction. time in HH:MM:SS format. Unpadded values such as `9:5:0` are accepted and normalized to `09:05:00`.
 * `start_day_of_week` (Required) - The start_day_of_week of the restriction. for daily restriction, it is 7. for weekly restriction, it is the day of the week.ie: 1 for monday, 2 for tuesday, 3 for wednesday, 4 for thursday, 5 for friday, 6 for saturday, 7 for sunday.
-* `duration` (Required)(Number) - The duration of the restriction in seconds.for daily restriction, max value can be  86400(24*60*60). for weekly restriction, it is 604800(7*24*60*60).
+* `duration` (Required)(Number) - The duration of the restriction in seconds. Must be less than 86400 (24 hours) for daily restrictions and less than 604800 (7 days) for weekly restrictions; this is checked at plan time.
 
 ## Layers and Daily Restrictions
 
@@ -155,7 +155,7 @@ overrides {
 
 ```
 ## Argument Reference
-* `name` (Required) - The name of the override.
+* `name` (Optional) - The name of the override. Zenduty allows unnamed overrides, so this may be omitted or empty.
 * `start_time` (Required) - The start_time of the override. time in YYYY-MM-DD HH:MM.
 * `end_time` (Required) - The end_time of the override. time in YYYY-MM-DD HH:MM.
 * `user` (Required) - The user of the override.

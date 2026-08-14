@@ -19,7 +19,7 @@ func resourceEsp() *schema.Resource {
 		CreateContext: resourceCreateEsp,
 		UpdateContext: resourceUpdateEsp,
 		DeleteContext: resourceDeleteEsp,
-		ReadContext:   wrapReadWith404(resourceReadEsp),
+		ReadContext:   resourceReadEsp,
 		Importer: &schema.ResourceImporter{
 			State: resourceEscalationPolicyImporter,
 		},
@@ -40,6 +40,7 @@ func resourceEsp() *schema.Resource {
 			"team_id": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"rules": &schema.Schema{
 				Type:     schema.TypeList,
@@ -90,6 +91,13 @@ func resourceEsp() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
+			"global_ep": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				ForceNew:    true,
+				Description: "Create as a global (account-level) escalation policy instead of a team-level one.",
+			},
 		},
 	}
 }
@@ -105,9 +113,6 @@ func CreateEsp(Ctx context.Context, d *schema.ResourceData, m interface{}) (*cli
 	}
 	if v, ok := d.GetOk("description"); ok {
 		newEsp.Description = v.(string)
-		if emptyString(newEsp.Description) {
-			return nil, diag.FromErr(errors.New("description is empty"))
-		}
 	}
 	if v, ok := d.GetOk("team_id"); ok {
 		newEsp.Team = v.(string)
@@ -115,9 +120,8 @@ func CreateEsp(Ctx context.Context, d *schema.ResourceData, m interface{}) (*cli
 	if v, ok := d.GetOk("repeat_policy"); ok {
 		newEsp.RepeatPolicy = v.(int)
 	}
-	if v, ok := d.GetOk("move_to_next"); ok {
-		newEsp.MoveToNext = v.(bool)
-	}
+	newEsp.MoveToNext = d.Get("move_to_next").(bool)
+	newEsp.GlobalEp = d.Get("global_ep").(bool)
 	newEsp.Rules = make([]client.Rules, len(rules))
 	oldDelay := 0
 	for i, rule := range rules {
@@ -125,9 +129,6 @@ func CreateEsp(Ctx context.Context, d *schema.ResourceData, m interface{}) (*cli
 		ruleMap := rule.(map[string]interface{})
 		newRule := client.Rules{}
 		if v, ok := ruleMap["delay"]; ok {
-			if i == 0 && newRule.Delay != 0 {
-				return nil, diag.FromErr(errors.New("delay is not 0 for first rule"))
-			}
 			newRule.Delay = v.(int)
 			if newRule.Delay < oldDelay && i != 0 {
 				return nil, diag.Errorf("delay must be greater than previous %d should be greater than %d", newRule.Delay, oldDelay)
@@ -194,9 +195,10 @@ func flattenRules(rules []client.Rules) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(rules))
 	for i, rule := range rules {
 		result[i] = map[string]interface{}{
-			"delay":    rule.Delay,
-			"position": rule.Position,
-			"targets":  flattenTargets(rule.Targets),
+			"delay":     rule.Delay,
+			"position":  rule.Position,
+			"unique_id": rule.UniqueID,
+			"targets":   flattenTargets(rule.Targets),
 		}
 	}
 	return result
@@ -291,7 +293,7 @@ func resourceReadEsp(Ctx context.Context, d *schema.ResourceData, m interface{})
 	var diags diag.Diagnostics
 	esp, err := apiclient.Esp.GetEscalationPolicyByID(teamID, id)
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", esp.Name)
 	d.Set("team_id", esp.Team)
@@ -299,6 +301,7 @@ func resourceReadEsp(Ctx context.Context, d *schema.ResourceData, m interface{})
 	d.Set("description", esp.Description)
 	d.Set("repeat_policy", esp.RepeatPolicy)
 	d.Set("move_to_next", esp.MoveToNext)
+	d.Set("global_ep", esp.GlobalEp)
 	if err := d.Set("rules", flattenRules(esp.Rules)); err != nil {
 		return diag.FromErr(err)
 	}

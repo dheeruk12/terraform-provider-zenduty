@@ -2,7 +2,7 @@ package zenduty
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -13,7 +13,7 @@ import (
 func resourceUser() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCreateUser,
-		ReadContext:   wrapReadWith404(resourceUserRead),
+		ReadContext:   resourceUserRead,
 		UpdateContext: resourceUpdateUser,
 		DeleteContext: resourceDeleteUser,
 		Importer: &schema.ResourceImporter{
@@ -23,7 +23,18 @@ func resourceUser() *schema.Resource {
 			"team": {
 				Type:             schema.TypeString,
 				Optional:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
+				Description:      "Invite destination team. Required when creating a user (enforced at create time).",
+				// The API treats team as the invite destination on create and
+				// never returns it, so an imported user has no value in state.
+				// Optional (not Required) so config generated from an import
+				// (team unknowable, rendered as null) still validates; create
+				// enforces it instead. The suppress hides the one-sided diff
+				// or every import plans a replacement.
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return old == "" && d.Id() != ""
+				},
 			},
 			"first_name": {
 				Type:             schema.TypeString,
@@ -33,6 +44,9 @@ func resourceUser() *schema.Resource {
 			"last_name": {
 				Type:     schema.TypeString,
 				Required: true,
+				// The API permits whitespace-only last names (and returns
+				// them on reads), so only zero-length values are rejected
+				ValidateDiagFunc: ValidateNonZeroLength(),
 			},
 			"email": {
 				Type:             schema.TypeString,
@@ -52,17 +66,15 @@ func resourceUser() *schema.Resource {
 func resourceCreateUser(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 
 	team := d.Get("team").(string)
+	if emptyString(team) {
+		return diag.Errorf("team is required to create a user: it is the invite destination team")
+	}
 	firstName := d.Get("first_name").(string)
 	lastName := d.Get("last_name").(string)
-	if emptyString(team) {
-		return diag.FromErr(errors.New("team is required"))
-	}
-	if emptyString(lastName) {
-		return diag.FromErr(errors.New("last_name is required"))
-	}
 	email := d.Get("email").(string)
+	role := d.Get("role").(int)
 	apiclient, _ := m.(*Config).Client()
-	newUser := &client.UserObj{FirstName: firstName, LastName: lastName, Email: email, Role: 3}
+	newUser := &client.UserObj{FirstName: firstName, LastName: lastName, Email: email, Role: role}
 	newUserobj := &client.CreateUser{Team: team, User: *newUser}
 
 	user, err := apiclient.Users.CreateUser(newUserobj)
@@ -70,7 +82,9 @@ func resourceCreateUser(ctx context.Context, d *schema.ResourceData, m interface
 		return diag.FromErr(err)
 	}
 	d.SetId(user.User.Username)
-	d.Set("role", 3)
+	// The create response is a team-member object whose role is the TEAM role
+	// enum (1 manager, 2 user), not the account role — keep the planned value;
+	// Read reports the account role from the account-member endpoint.
 	return nil
 }
 
@@ -101,7 +115,7 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	apiclient, _ := m.(*Config).Client()
 	user, err := apiclient.Users.GetUser(d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(user.User.Username)
 	d.Set("role", user.Role)
@@ -111,6 +125,12 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	return nil
 }
 
+// The Zenduty API has no endpoint to delete or deactivate an account member,
+// so destroy can only forget the user from state.
 func resourceDeleteUser(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	return nil
+	return diag.Diagnostics{{
+		Severity: diag.Warning,
+		Summary:  "zenduty_user cannot be deleted via the API",
+		Detail:   fmt.Sprintf("User %s was removed from Terraform state, but the account member still exists in Zenduty and must be removed from the web console.", d.Id()),
+	}}
 }

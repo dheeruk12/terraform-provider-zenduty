@@ -10,6 +10,7 @@ import (
 	"github.com/Zenduty/zenduty-go-sdk/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func resourceMaintenanceWindow() *schema.Resource {
@@ -17,7 +18,7 @@ func resourceMaintenanceWindow() *schema.Resource {
 		CreateContext: resourceCreateManintenances,
 		UpdateContext: resourceUpdateManintenances,
 		DeleteContext: resourceDeleteManintenances,
-		ReadContext:   wrapReadWith404(resourceReadManintenances),
+		ReadContext:   resourceReadManintenances,
 		Importer: &schema.ResourceImporter{
 			State: resourceMaintenanceImporter,
 		},
@@ -30,6 +31,7 @@ func resourceMaintenanceWindow() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"start_time": {
@@ -45,8 +47,10 @@ func resourceMaintenanceWindow() *schema.Resource {
 				Required: true,
 			},
 			"repeat_interval": {
-				Type:     schema.TypeInt,
-				Optional: true,
+				Type:         schema.TypeInt,
+				Optional:     true,
+				ValidateFunc: validation.IntAtLeast(0),
+				Description:  "Repeat interval of the window. 0 (the API default) means the window does not repeat.",
 			},
 			"repeat_until": {
 				Type:     schema.TypeString,
@@ -82,10 +86,6 @@ func ValidateMaintenanceWindow(Ctx context.Context, d *schema.ResourceData, m in
 	}
 
 	if v, ok := d.GetOk("start_time"); ok {
-		if !validateDate(v.(string)) {
-			return nil, diag.FromErr(errors.New("start_time is invalid"))
-		}
-
 		newManintence.StartTime = v.(string)
 
 		loc, zoneErr := time.LoadLocation(newManintence.TimeZone)
@@ -100,9 +100,6 @@ func ValidateMaintenanceWindow(Ctx context.Context, d *schema.ResourceData, m in
 
 	}
 	if v, ok := d.GetOk("end_time"); ok {
-		if !validateDate(v.(string)) {
-			return nil, diag.FromErr(errors.New("end_time is invalid"))
-		}
 		newManintence.EndTime = v.(string)
 
 		loc, zoneErr := time.LoadLocation(newManintence.TimeZone)
@@ -118,17 +115,11 @@ func ValidateMaintenanceWindow(Ctx context.Context, d *schema.ResourceData, m in
 	}
 
 	if v, ok := d.GetOk("repeat_interval"); ok {
-		if v.(int) <= 0 {
-			return nil, diag.FromErr(errors.New("repeat_interval must be greater than 0"))
-		}
 		newManintence.RepeatInterval = v.(int)
 	}
 	if v, ok := d.GetOk("repeat_until"); ok {
 		if v.(string) == "" {
 			return nil, diag.FromErr(errors.New("repeat_until must not be empty"))
-		}
-		if !validateDate(v.(string)) {
-			return nil, diag.FromErr(errors.New("repeat_until is invalid"))
 		}
 
 		loc, zoneErr := time.LoadLocation(newManintence.TimeZone)
@@ -153,19 +144,6 @@ func ValidateMaintenanceWindow(Ctx context.Context, d *schema.ResourceData, m in
 	}
 	return newManintence, nil
 }
-
-// if v, ok := d.GetOk("services"); ok {
-
-// 	for _, service := range v.([]interface{}) {
-// 		if service.(map[string]interface{})["services"] == nil {
-// 			return nil, diag.FromErr(errors.New("services must not be empty"))
-// 		}
-// 		if !IsValidUUID(service.(map[string]interface{})["services"].(string)) {
-// 			return nil, diag.FromErr(errors.New("services must be a valid UUID"))
-// 		}
-
-// 	}
-// }
 
 func resourceCreateManintenances(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var teamID string
@@ -221,7 +199,7 @@ func resourceReadManintenances(ctx context.Context, d *schema.ResourceData, m in
 	apiclient, _ := m.(*Config).Client()
 	maintenance, err := apiclient.MaintenanceWindow.GetMaintenanceWindowByID(teamID, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("name", maintenance.Name)
 	d.Set("repeat_interval", maintenance.RepeatInterval)

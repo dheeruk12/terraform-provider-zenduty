@@ -2,7 +2,7 @@ package zenduty
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -59,6 +59,30 @@ func dataSourceAlertRules() *schema.Resource {
 						"description": {
 							Type:     schema.TypeString,
 							Computed: true,
+						},
+						"conditions": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"unique_id": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+									"alert_condition_type": {
+										Type:     schema.TypeInt,
+										Computed: true,
+									},
+									"alert_field": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+									"pattern": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+								},
+							},
 						},
 						"actions": &schema.Schema{
 							Type:     schema.TypeList,
@@ -135,6 +159,7 @@ func dataSourceAlertRulesRead(ctx context.Context, d *schema.ResourceData, m int
 		item["stop"] = rule.Stop
 		item["unique_id"] = rule.UniqueID
 		item["description"] = rule.Description
+		item["conditions"] = flattenAlertRuleConditions(rule.Conditions)
 		actions := make([]map[string]interface{}, len(rule.Actions))
 		for j, action := range rule.Actions {
 			rule := make(map[string]interface{})
@@ -156,7 +181,7 @@ func dataSourceAlertRulesRead(ctx context.Context, d *schema.ResourceData, m int
 		if err := d.Set("alertrules", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s/%s/%s", teamID, serviceID, integrationID, alertRuleID))
 
 		return diags
 	} else {
@@ -175,6 +200,7 @@ func dataSourceAlertRulesRead(ctx context.Context, d *schema.ResourceData, m int
 			item["stop"] = rule.Stop
 			item["unique_id"] = rule.UniqueID
 			item["description"] = rule.Description
+			item["conditions"] = flattenAlertRuleConditions(rule.Conditions)
 			actions := make([]map[string]interface{}, len(rule.Actions))
 			for j, action := range rule.Actions {
 				rule := make(map[string]interface{})
@@ -196,7 +222,7 @@ func dataSourceAlertRulesRead(ctx context.Context, d *schema.ResourceData, m int
 		if err := d.Set("alertrules", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s/%s/%s", teamID, serviceID, integrationID, alertRuleID))
 
 		return diags
 	}

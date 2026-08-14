@@ -67,6 +67,7 @@ func dataSourceTagsRead(ctx context.Context, d *schema.ResourceData, m interface
 		item["team"] = tag.Team
 		item["unique_id"] = tag.UniqueID
 		item["name"] = tag.Name
+		item["color"] = tag.Color
 		item["creation_date"] = tag.CreationDate
 		items[i] = item
 	}

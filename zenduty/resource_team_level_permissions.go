@@ -3,7 +3,6 @@ package zenduty
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/Zenduty/zenduty-go-sdk/client"
 
@@ -15,7 +14,7 @@ import (
 func resourceTeamLevelPermissions() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCreateTeamLeveLPermissions,
-		ReadContext:   wrapReadWith404(resourceReadTeamLeveLPermissions),
+		ReadContext:   resourceReadTeamLeveLPermissions,
 		UpdateContext: resourceUpdateTeamLeveLPermissions,
 		DeleteContext: resourceDeleteTeamLeveLPermissions,
 		Importer: &schema.ResourceImporter{
@@ -25,54 +24,32 @@ func resourceTeamLevelPermissions() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 			"permissions": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Required: true,
 				MinItems: 1,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "Permissions for the team. The API automatically adds the read permissions implied by the ones you list (e.g. incident_read pulls in team_read, service_read, ...); list the full stored set to avoid plan diffs.",
 			},
 		},
 	}
 }
 
 func validateTeamLeveLPermissionss(Ctx context.Context, d *schema.ResourceData, m interface{}) (*client.TeamLevelPermissions, diag.Diagnostics) {
-	permissionsList := []string{
-		"analytics_read",
-		"escalation_policy_attach",
-		"escalation_policy_read",
-		"incident_read",
-		"incident_role_read",
-		"incident_write",
-		"integration_read",
-		"maintenance_read",
-		"member_read",
-		"post_incident_task_read",
-		"postmortem_read",
-		"priority_read",
-		"schedule_attach",
-		"schedule_read",
-		"service_read",
-		"sla_read",
-		"stakeholder_template_read",
-		"tag_read",
-		"task_template_read",
-		"team_read",
-	}
-
-	permissions := d.Get("permissions").([]interface{})
+	permissions := d.Get("permissions").(*schema.Set).List()
 	newPermission := &client.TeamLevelPermissions{}
 	team_id := d.Get("team_id").(string)
 	newPermission.UniqueID = team_id
+	// The permission catalogue grows server-side and there is no endpoint to
+	// fetch it, so unknown values are left to the API to reject.
 	for _, permission := range permissions {
 		if permission.(string) == "" {
 			return nil, diag.FromErr(errors.New("permission must not be empty"))
-		}
-		if !checkList(permission.(string), permissionsList) {
-			return nil, diag.FromErr(fmt.Errorf("invalid permission received %s", permission.(string)))
 		}
 		newPermission.Permissions = append(newPermission.Permissions, permission.(string))
 	}
@@ -124,7 +101,7 @@ func resourceReadTeamLeveLPermissions(ctx context.Context, d *schema.ResourceDat
 	apiclient, _ := m.(*Config).Client()
 	teamPermissions, err := apiclient.Teams.GetTeamLevelPermissions(d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(teamPermissions.UniqueID)
 	d.Set("team_id", teamPermissions.UniqueID)

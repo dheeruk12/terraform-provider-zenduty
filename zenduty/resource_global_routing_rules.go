@@ -17,14 +17,16 @@ func resourceGlobalRoutingRules() *schema.Resource {
 		CreateContext: resourceCreateRoutingRules,
 		UpdateContext: resourceUpdateRoutingRules,
 		DeleteContext: resourceDeleteRoutingRules,
-		ReadContext:   wrapReadWith404(resourceReadRoutingRules),
+		ReadContext:   resourceReadRoutingRules,
 		Importer: &schema.ResourceImporter{
 			State: resourceRouterRulesImporter,
 		},
 		Schema: map[string]*schema.Schema{
 			"router_id": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: ValidateUUID(),
 			},
 			"name": {
 				Type:     schema.TypeString,
@@ -33,6 +35,15 @@ func resourceGlobalRoutingRules() *schema.Resource {
 			"rule_json": {
 				Type:     schema.TypeString,
 				Optional: true,
+				// Read stores the API's compact, key-sorted JSON, so without
+				// this any human-formatted config diffs on every plan.
+				DiffSuppressFunc: suppressEquivalentJSONDiffs,
+			},
+			"position": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Computed:    true,
+				Description: "Evaluation order of the rule within the router. Assigned by the server when omitted.",
 			},
 			"actions": &schema.Schema{
 				Type:     schema.TypeList,
@@ -94,7 +105,7 @@ func ValidateAndCreateRoutingRules(Ctx context.Context, d *schema.ResourceData, 
 
 	}
 	if newAlertRule.Name == "" {
-		return nil, diag.FromErr(errors.New("description is required"))
+		return nil, diag.FromErr(errors.New("name is required"))
 	}
 	if newAlertRule.RuleJSON == "" {
 		return nil, diag.FromErr(errors.New("rule_json is required"))
@@ -102,6 +113,7 @@ func ValidateAndCreateRoutingRules(Ctx context.Context, d *schema.ResourceData, 
 	if !isJSONString(newAlertRule.RuleJSON) {
 		return nil, diag.FromErr(errors.New("rule_json is not valid JSON"))
 	}
+	newAlertRule.Position = d.Get("position").(int)
 	actions, actionErr := CreateRoutingRuleAction(Ctx, d, m, newAlertRule)
 	if actionErr != nil {
 		return nil, actionErr
@@ -163,7 +175,7 @@ func resourceReadRoutingRules(Ctx context.Context, d *schema.ResourceData, m int
 	routerID := d.Get("router_id").(string)
 	rule, err := apiclient.GlobalRouter.GetGlobalRoutingRule(routerID, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(rule.UniqueID)
 	if rule.RuleJSON != "" {
@@ -179,6 +191,7 @@ func resourceReadRoutingRules(Ctx context.Context, d *schema.ResourceData, m int
 	}
 	d.Set("actions", flattenRoutingActions(rule))
 	d.Set("name", rule.Name)
+	d.Set("position", rule.Position)
 
 	return diags
 }

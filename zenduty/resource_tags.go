@@ -16,7 +16,7 @@ func resourceTags() *schema.Resource {
 		CreateContext: resourceCreateTags,
 		UpdateContext: resourceUpdateTags,
 		DeleteContext: resourceDeleteTags,
-		ReadContext:   wrapReadWith404(resourceReadTag),
+		ReadContext:   resourceReadTag,
 		Importer: &schema.ResourceImporter{
 			State: resourceTagImporter,
 		},
@@ -33,6 +33,7 @@ func resourceTags() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 		},
@@ -46,9 +47,6 @@ func validateTags(Ctx context.Context, d *schema.ResourceData, m interface{}) (*
 	newTag := &client.Tag{}
 	if !IsValidUUID(team) {
 		return nil, diag.FromErr(errors.New("team_id must be a valid UUID"))
-	}
-	if color != "" && !checkList(color, []string{"magenta", "red", "volcano", "orange", "gold", "lime", "green", "cyan", "blue", "geekblue", "purple"}) {
-		return nil, diag.FromErr(errors.New("color must be one of the following: magenta, red, volcano, orange, gold, lime, green, cyan, blue, geekblue, purple"))
 	}
 
 	newTag.Name = name
@@ -103,7 +101,7 @@ func resourceReadTag(ctx context.Context, d *schema.ResourceData, m interface{})
 	team := d.Get("team_id").(string)
 	tag, err := apiclient.Tags.GetTagID(team, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(tag.UniqueID)
 	d.Set("name", tag.Name)

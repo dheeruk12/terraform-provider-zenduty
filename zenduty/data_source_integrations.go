@@ -2,7 +2,7 @@ package zenduty
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -56,14 +56,17 @@ func dataSourceIntegrations() *schema.Resource {
 						"application_reference": {
 							Type:     schema.TypeMap,
 							Computed: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 						"integration_key": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Type:      schema.TypeString,
+							Computed:  true,
+							Sensitive: true,
 						},
 						"webhook_url": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Type:      schema.TypeString,
+							Computed:  true,
+							Sensitive: true,
 						},
 						"created_by": {
 							Type:     schema.TypeString,
@@ -131,7 +134,7 @@ func dataSourceIncidentReads(ctx context.Context, d *schema.ResourceData, m inte
 		if err := d.Set("integrations", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s/%s", teamID, serviceID, integrationID))
 		return diags
 
 	} else {
@@ -173,7 +176,7 @@ func dataSourceIncidentReads(ctx context.Context, d *schema.ResourceData, m inte
 		if err := d.Set("integrations", items); err != nil {
 			return diag.FromErr(err)
 		}
-		d.SetId(time.Now().String())
+		d.SetId(fmt.Sprintf("%s/%s/%s", teamID, serviceID, integrationID))
 		return diags
 
 	}

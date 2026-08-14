@@ -32,15 +32,19 @@ resource "zenduty_user" "demouser" {
 
 * `email` (Required) - EmailAddress of the user 
 * `first_name` (Required) - Firstname of the user
-* `last_name` (Required) - Lastname of the user
-* `team` (Required) - Unique of the team to which the user is to be invited
-* `role` (Optional) - Role of the user (`2` for admin , `3` for user) set to `3` while creation.
+* `last_name` (Required) - Lastname of the user. Whitespace-only values are accepted (the Zenduty API permits them); only an empty string is rejected.
+* `team` (Required, Forces new resource) - Unique id of the team to which the user is to be invited
+* `role` (Optional) - Account role of the user: `2` for admin, `3` for user. Defaults to `3`. (`1`, the account owner, cannot be assigned through the API.)
 
 ## Attributes Reference
 
 The following attributes are exported:
 
 * `id` - The username of the Zenduty User.
+
+**Note**: The Zenduty API has no endpoint to delete or deactivate an account
+member. Destroying a `zenduty_user` resource removes it from Terraform state and
+emits a warning; the user must be removed from the Zenduty web console.
 
 ## Import
 

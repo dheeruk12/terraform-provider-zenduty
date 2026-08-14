@@ -29,11 +29,14 @@ resource "zenduty_incidents" "incident1"{
 
 ## Argument Reference
 
-* `title` (Required) - The title of the incident.
-* `summary` (Required) - The summary of the incident.
-* `service` (Required) - Unique_ID of the service.
-* `user` (Required) - Username of the user.
-* `escalation_policy` (Required) - unique_id of the escalation policy.
+All of the fields below except `status` and `urgency` force a new incident when
+changed, since the API does not allow editing them after creation.
+
+* `title` (Required, Forces new resource) - The title of the incident.
+* `summary` (Required, Forces new resource) - The summary of the incident.
+* `service` (Required, Forces new resource) - Unique_ID of the service.
+* `user` (Required, Forces new resource) - Username of the user creating the incident. The API never returns this field, so it stays empty on imported incidents.
+* `escalation_policy` (Required, Forces new resource) - unique_id of the escalation policy.
 
 ## DataTypes 
 ### Required
@@ -46,5 +49,10 @@ resource "zenduty_incidents" "incident1"{
 ### Optional
 
 - **status** (Number)
+- **urgency** (Number)
 
-* `status` (Optional) (Number) -  values are `2` to acknowledge `3` to resolve
+* `status` (Optional) (Number) -  values are `1` triggered, `2` to acknowledge, `3` to resolve
+* `urgency` (Optional) (Number) - values are `0` for low, `1` for high. Defaults to the service's urgency.
+
+**Note**: Zenduty has no incident-delete endpoint. Destroying a `zenduty_incidents`
+resource removes it from Terraform state only; the incident itself is untouched.

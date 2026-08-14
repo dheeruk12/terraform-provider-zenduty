@@ -14,7 +14,7 @@ import (
 func resourceNotificationRules() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCreateNotificationRule,
-		ReadContext:   wrapReadWith404(resourceReadNotificationRule),
+		ReadContext:   resourceReadNotificationRule,
 		UpdateContext: resourceUpdateNotificationRule,
 		DeleteContext: resourceDeleteNotificationRule,
 		Importer: &schema.ResourceImporter{
@@ -24,6 +24,7 @@ func resourceNotificationRules() *schema.Resource {
 			"username": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"contact": {
 				Type:             schema.TypeString,
@@ -102,7 +103,7 @@ func resourceReadNotificationRule(Ctx context.Context, d *schema.ResourceData, m
 	}
 	notificationRule, err := apiclient.NotificationRules.GetNotificationRulesByID(username, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.Set("contact", notificationRule.Contact)
 	d.Set("delay", notificationRule.StartDelay)

@@ -53,7 +53,7 @@ resource "zenduty_maintenance_window" "example_maintenance_window" {
 * `end_time` - (Required) The end time of the maintenance window in the format of "YYYY-MM-DD HH:MM".
 * `timezone` - (Required) The timezone of the maintenance window.
 * `services` - (Required) The service ids that are associated with the maintenance window.
-* `repeat_interval` - (Optional)(Number) The repeat interval of the maintenance window.
+* `repeat_interval` - (Optional)(Number) The repeat interval of the maintenance window. `0` (the API default) means the window does not repeat.
 * `repeat_until` - (Optional)(String) The repeat until of the maintenance window in the format of "YYYY-MM-DD HH:MM".
 
 

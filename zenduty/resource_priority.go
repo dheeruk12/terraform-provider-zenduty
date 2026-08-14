@@ -16,7 +16,7 @@ func resourcePriority() *schema.Resource {
 		CreateContext: resourceCreatePriority,
 		UpdateContext: resourceUpdatePriority,
 		DeleteContext: resourceDeletePriority,
-		ReadContext:   wrapReadWith404(resourceReadPriority),
+		ReadContext:   resourceReadPriority,
 		Importer: &schema.ResourceImporter{
 			State: resourcePriorityImporter,
 		},
@@ -37,6 +37,7 @@ func resourcePriority() *schema.Resource {
 			"team_id": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				ValidateDiagFunc: ValidateUUID(),
 			},
 		},
@@ -52,9 +53,6 @@ func validatePriority(Ctx context.Context, d *schema.ResourceData, m interface{}
 	newPriority := &client.Priority{}
 	if !IsValidUUID(team) {
 		return nil, diag.FromErr(errors.New("team_id must be a valid UUID"))
-	}
-	if color != "" && !checkList(color, []string{"magenta", "red", "volcano", "orange", "gold", "lime", "green", "cyan", "blue", "geekblue", "purple"}) {
-		return nil, diag.FromErr(errors.New("color must be one of the following: magenta, red, volcano, orange, gold, lime, green, cyan, blue, geekblue, purple"))
 	}
 
 	newPriority.Name = name
@@ -110,7 +108,7 @@ func resourceReadPriority(ctx context.Context, d *schema.ResourceData, m interfa
 	team := d.Get("team_id").(string)
 	tag, err := apiclient.Priority.GetPriorityByID(team, d.Id())
 	if err != nil {
-		return diag.FromErr(err)
+		return handleReadError(d, err)
 	}
 	d.SetId(tag.UniqueID)
 	d.Set("name", tag.Name)

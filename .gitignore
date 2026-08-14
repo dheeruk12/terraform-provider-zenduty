@@ -12,3 +12,7 @@
 *.tf
 .git
 *vendor
+
+# local dev workspace (SDK companion checkout)
+go.work
+go.work.sum

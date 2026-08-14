@@ -71,6 +71,7 @@ func dataSourcePriorityRead(ctx context.Context, d *schema.ResourceData, m inter
 		item["team"] = priority.Team
 		item["unique_id"] = priority.UniqueID
 		item["name"] = priority.Name
+		item["color"] = priority.Color
 		item["creation_date"] = priority.CreationDate
 		item["description"] = priority.Description
 		items[i] = item

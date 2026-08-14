@@ -29,7 +29,7 @@ resource "zenduty_task_templates" "demotemplate" {
 
 * `team_id` - (Required) The unique_id of team to create the tasktemplate in.
 * `name` - (Required) The name of the tasktemplate.
-* `summary`  - (Required) The summary of the tasktemplate.
+* `summary`  - (Optional) The summary of the tasktemplate. May be omitted or empty.
 
 ## Attributes Reference
 
